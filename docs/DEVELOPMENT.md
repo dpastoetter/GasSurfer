@@ -25,7 +25,10 @@ gas-surfer/
 │   ├── CurrencySelector.tsx
 │   └── FeeAveragesDisplay.tsx
 ├── public/
+├── scripts/
+│   └── screenshot.mjs      # Playwright script for README screenshots
 └── docs/
+    └── screenshots/         # Screenshots for README (hero.png, full.png, mobile.png)
 ```
 
 ---
@@ -72,6 +75,10 @@ npm run build   # tsc -b && vite build
 npm run preview # serve dist/
 npm run lint    # eslint
 ```
+
+### Regenerating screenshots
+
+With the dev server running (`npm run dev`), in another terminal run `npm run screenshot`. This saves `docs/screenshots/hero.png`, `full.png`, and `mobile.png` (used in the README).
 
 ---
 

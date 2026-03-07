@@ -2,7 +2,13 @@
 
 **Ride the network when it's cheap.** Real-time gas and fee tracker for Bitcoin, Ethereum, and 13 EVM chains with a surf-report vibe.
 
-**Version:** 0.1.0
+**Version:** 0.1.0 · **Source:** [GitHub](https://github.com/dpastoetter/GasSurfer)
+
+### Screenshots
+
+| Desktop | Mobile | Full page |
+|--------|--------|-----------|
+| [![Hero](docs/screenshots/hero.png)](docs/screenshots/hero.png) | [![Mobile](docs/screenshots/mobile.png)](docs/screenshots/mobile.png) | [![Full](docs/screenshots/full.png)](docs/screenshots/full.png) |
 
 ---
 
@@ -70,4 +76,4 @@ All URLs are allowlisted in `src/config/chains.ts` for safe use as a static webs
 
 ## License
 
-Private / unlicensed. Use at your own discretion.
+[MIT](LICENSE) — Copyright (c) Dominik Pastoetter.
