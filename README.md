@@ -67,6 +67,13 @@ All URLs are allowlisted in `src/config/chains.ts` for safe use as a static webs
 
 ---
 
+## Security
+
+- **Reporting vulnerabilities** — See [SECURITY.md](SECURITY.md) for how to report security issues and for a short description of this project’s security model.
+- **In short:** static site, no backend, no API keys; all endpoints are public and allowlisted; CSP and referrer policy are set in `index.html`; fee history stays in your browser only.
+
+---
+
 ## Documentation
 
 - **[docs/V0.1.md](docs/V0.1.md)** — Version 0.1 user guide and release notes
