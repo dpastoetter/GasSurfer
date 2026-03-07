@@ -83,4 +83,4 @@ All URLs are allowlisted in `src/config/chains.ts` for safe use as a static webs
 
 ## License
 
-[MIT](LICENSE) — Copyright (c) Dominik Pastoetter.
+[MIT](LICENSE)
