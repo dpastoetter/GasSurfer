@@ -25,11 +25,12 @@ interface ChainCardProps {
   currency: Currency;
   feeAverages?: FeeAverages;
   isPrimary?: boolean;
+  isCheapest?: boolean;
   featured?: boolean;
   onClick?: () => void;
 }
 
-export function ChainCard({ chain, coinGeckoId, prices, currency, feeAverages, isPrimary, featured, onClick }: ChainCardProps) {
+export function ChainCard({ chain, coinGeckoId, prices, currency, feeAverages, isPrimary, isCheapest, featured, onClick }: ChainCardProps) {
   const gradient = CONDITION_COLORS[chain.condition];
   const conditionLabel = CONDITION_LABELS[chain.condition];
 
@@ -39,54 +40,61 @@ export function ChainCard({ chain, coinGeckoId, prices, currency, feeAverages, i
       onClick={onClick}
       className={`
         w-full text-left rounded-2xl glass border bg-gradient-to-br ${gradient}
-        transition-all duration-300 hover:scale-[1.02] hover:border-white/20
-        ${featured ? 'p-6 md:p-7 border-2 border-white/20 shadow-lg shadow-surf-900/30' : 'p-5'}
-        ${isPrimary ? 'ring-2 ring-surf-400/50 ring-offset-2 ring-offset-deep-950' : ''}
+        transition-all duration-300 hover:scale-[1.02] hover:border-slate-300/50 dark:hover:border-white/20
+        ${featured ? 'p-6 md:p-7 border-2 border-slate-300/50 dark:border-white/20 shadow-lg shadow-surf-900/30' : 'p-5'}
+        ${isPrimary ? 'ring-2 ring-surf-400/50 ring-offset-2 ring-offset-white dark:ring-offset-deep-950' : ''}
       `}
     >
-      <div className="flex items-center justify-between mb-3">
-        <span className={`font-display tracking-wide text-white ${featured ? 'text-2xl md:text-3xl' : 'text-xl'}`}>
+      <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
+        <span className={`font-display tracking-wide text-slate-900 dark:text-white ${featured ? 'text-2xl md:text-3xl' : 'text-xl'}`}>
           {chain.name}
         </span>
-        {featured && (
-          <span className="text-[10px] uppercase tracking-widest text-surf-400/80 font-semibold">Featured</span>
-        )}
-        <span
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          {featured && (
+            <span className="text-[10px] uppercase tracking-widest text-surf-600 dark:text-surf-400/80 font-semibold">Featured</span>
+          )}
+          {isCheapest && (
+            <span className="text-[10px] uppercase tracking-widest text-emerald-600 dark:text-emerald-400/90 font-semibold bg-emerald-500/25 dark:bg-emerald-500/20 px-2 py-0.5 rounded-full">
+              Best deal
+            </span>
+          )}
+          <span
           className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
             chain.condition === 'surfs-up'
-              ? 'bg-emerald-500/30 text-emerald-200'
+              ? 'bg-emerald-500/30 text-emerald-800 dark:text-emerald-200'
               : chain.condition === 'storm'
-                ? 'bg-red-500/30 text-red-200'
-                : 'bg-white/10 text-surf-200'
+                ? 'bg-red-500/30 text-red-800 dark:text-red-200'
+                : 'bg-slate-300/50 dark:bg-white/10 text-slate-700 dark:text-surf-200'
           }`}
         >
           {conditionLabel}
         </span>
+        </div>
       </div>
       <div className="grid grid-cols-3 gap-2 text-sm">
         <div>
-          <p className="text-white/50">Slow</p>
-          <p className="text-foam font-mono font-semibold">{formatGwei(chain.gas.slow)}</p>
+          <p className="text-slate-500 dark:text-white/50">Slow</p>
+          <p className="text-surf-700 dark:text-foam font-mono font-semibold">{formatGwei(chain.gas.slow)}</p>
         </div>
         <div>
-          <p className="text-white/50">Standard</p>
-          <p className="text-white font-mono font-semibold">{formatGwei(chain.gas.standard)}</p>
+          <p className="text-slate-500 dark:text-white/50">Standard</p>
+          <p className="text-slate-900 dark:text-white font-mono font-semibold">{formatGwei(chain.gas.standard)}</p>
         </div>
         <div>
-          <p className="text-white/50">Fast</p>
-          <p className="text-surf-300 font-mono font-semibold">{formatGwei(chain.gas.fast)}</p>
+          <p className="text-slate-500 dark:text-white/50">Fast</p>
+          <p className="text-surf-600 dark:text-surf-300 font-mono font-semibold">{formatGwei(chain.gas.fast)}</p>
         </div>
       </div>
-      <p className="text-white/40 text-xs mt-2">{feeUnitLabel(chain.chainId)}</p>
+      <p className="text-slate-500 dark:text-white/40 text-xs mt-2">{feeUnitLabel(chain.chainId)}</p>
       {chain.chainId === BITCOIN_CHAIN_ID && (
-        <p className="text-white/30 text-[10px] mt-0.5">~1 hr · ~30 min · next block</p>
+        <p className="text-slate-400 dark:text-white/30 text-[10px] mt-0.5">~1 hr · ~30 min · next block</p>
       )}
       {(() => {
         const costToken = gasCostInToken(chain.chainId, chain.gas.standard);
         const price = getPriceInCurrency(prices, coinGeckoId, currency);
         const costFiat = price != null ? costToken * price : null;
         return costFiat != null ? (
-          <p className="text-surf-300 text-sm mt-2">
+          <p className="text-surf-600 dark:text-surf-300 text-sm mt-2">
             {costLabel(chain.chainId)} ≈ {formatFiat(costFiat, currency)}
           </p>
         ) : null;

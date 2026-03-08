@@ -1,23 +1,49 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import type { ChainGas } from './types';
-import { pushSample, getAllAverages, type FeeAverages } from './feeHistory';
+import type { FeeAverages } from './feeHistory';
+import { postSamples, getAverages } from './api/averages';
 
 export function useFeeAverages(chains: ChainGas[]): Record<number, FeeAverages> {
   const [averages, setAverages] = useState<Record<number, FeeAverages>>({});
 
+  const fetchAverages = useCallback(async (chainIds: number[]) => {
+    if (chainIds.length === 0) return;
+    try {
+      const data = await getAverages(chainIds);
+      setAverages(data);
+    } catch {
+      setAverages((prev) => prev);
+    }
+  }, []);
+
   useEffect(() => {
     if (!chains?.length) return;
-    try {
-      for (const chain of chains) {
-        if (chain?.gas?.standard != null && Number.isFinite(chain.gas.standard)) {
-          pushSample(chain.chainId, chain.gas.standard, chain.updatedAt ?? Date.now());
-        }
+
+    const chainIds = chains.map((c) => c.chainId);
+    const samples = chains
+      .filter((c) => c?.gas?.standard != null && Number.isFinite(c.gas.standard))
+      .map((c) => ({
+        chainId: c.chainId,
+        value: c.gas.standard,
+        timestamp: c.updatedAt ?? Date.now(),
+      }));
+
+    let cancelled = false;
+
+    (async () => {
+      try {
+        await postSamples(samples);
+        if (cancelled) return;
+        await fetchAverages(chainIds);
+      } catch {
+        if (!cancelled) fetchAverages(chainIds).catch(() => {});
       }
-      setAverages(getAllAverages(chains.map((c) => c.chainId)));
-    } catch {
-      // ignore localStorage or parse errors
-    }
-  }, [chains]);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [chains, fetchAverages]);
 
   return averages;
 }

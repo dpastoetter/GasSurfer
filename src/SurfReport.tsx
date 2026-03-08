@@ -1,3 +1,4 @@
+import { useState, useCallback } from 'react';
 import type { SurfCondition, Currency } from './types';
 import { formatGwei, gasCostInToken, formatFiat, feeUnitLabel, costLabel } from './types';
 import { getPriceInCurrency } from './useTokenPrices';
@@ -23,10 +24,25 @@ interface SurfReportProps {
 }
 
 export function SurfReport({ condition, gwei, chainName, coinGeckoId, prices, currency, chainId, feeAverages }: SurfReportProps) {
+  const [copied, setCopied] = useState(false);
   const { label, sub, emoji } = LABELS[condition];
   const costToken = gasCostInToken(chainId, gwei);
   const price = getPriceInCurrency(prices, coinGeckoId, currency);
   const costFiat = price != null ? costToken * price : null;
+
+  const copyFee = useCallback(() => {
+    const text = `${chainName} standard: ${formatGwei(gwei)} ${feeUnitLabel(chainId)}`;
+    void navigator.clipboard.writeText(text).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }, [chainName, gwei, chainId]);
+
+  const avg7d = feeAverages?.avg7d;
+  const trendPercent =
+    avg7d != null && avg7d > 0 && Number.isFinite(gwei)
+      ? Math.round(((gwei - avg7d) / avg7d) * 100)
+      : null;
 
   return (
     <div className="text-center">
@@ -36,16 +52,35 @@ export function SurfReport({ condition, gwei, chainName, coinGeckoId, prices, cu
       >
         {emoji}
       </div>
-      <h1 className="font-display text-5xl md:text-7xl tracking-widest text-white mb-2">
+      <h1 className="font-display text-5xl md:text-7xl tracking-widest text-slate-900 dark:text-white mb-2">
         {label}
       </h1>
-      <p className="text-surf-200 text-lg md:text-xl mb-1">{sub}</p>
-      <p className="text-surf-400/90 text-sm">
-        {chainName} · <span className="text-foam font-semibold">{formatGwei(gwei)} {feeUnitLabel(chainId)}</span>
+      <p className="text-surf-600 dark:text-surf-200 text-lg md:text-xl mb-1">{sub}</p>
+      <p className="text-surf-600 dark:text-surf-400/90 text-sm flex flex-wrap items-center justify-center gap-2">
+        <span>
+          {chainName} · <span className="text-surf-700 dark:text-foam font-semibold">{formatGwei(gwei)} {feeUnitLabel(chainId)}</span>
+        </span>
+        <button
+          type="button"
+          onClick={copyFee}
+          className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium bg-slate-200/60 dark:bg-white/10 hover:bg-slate-300/60 dark:hover:bg-white/20 text-slate-700 dark:text-surf-200 transition-colors"
+          title="Copy fee to clipboard"
+        >
+          {copied ? '✓ Copied' : '📋 Copy'}
+        </button>
       </p>
+      {trendPercent != null && (
+        <p className="text-surf-600 dark:text-surf-300/90 text-sm mt-1">
+          {trendPercent <= 0 ? (
+            <span className="text-emerald-600 dark:text-emerald-300/90">↓ {Math.abs(trendPercent)}% vs 7d avg</span>
+          ) : (
+            <span className="text-amber-600 dark:text-amber-300/90">↑ {trendPercent}% vs 7d avg</span>
+          )}
+        </p>
+      )}
       {costFiat != null && (
-        <p className="text-surf-300 text-base mt-2">
-          {costLabel(chainId)} ≈ <span className="text-foam font-semibold">{formatFiat(costFiat, currency)}</span>
+        <p className="text-surf-600 dark:text-surf-300 text-base mt-2">
+          {costLabel(chainId)} ≈ <span className="text-surf-700 dark:text-foam font-semibold">{formatFiat(costFiat, currency)}</span>
         </p>
       )}
       {feeAverages && (

@@ -1,0 +1,98 @@
+/**
+ * Gas Surfer API server.
+ * - POST /api/samples — record fee samples (one value per day per chain)
+ * - GET /api/averages?chainIds=1,0,8453 — return 7d/30d/90d/180d averages per chain
+ */
+
+import express from 'express';
+import { upsertSamples, getAllAverages } from './db.js';
+import {
+  securityHeaders,
+  corsOptions,
+  BODY_LIMIT,
+  samplesRateLimiter,
+  averagesRateLimiter,
+} from './middleware.js';
+import { validateSample, validateChainIds, MAX_SAMPLES } from './security.js';
+
+const app = express();
+const PORT = Number(process.env.PORT) || 3001;
+
+if (process.env.TRUST_PROXY === '1') {
+  app.set('trust proxy', 1);
+}
+
+app.use(securityHeaders());
+app.use(corsOptions());
+app.use(express.json({ limit: BODY_LIMIT, strict: true }));
+
+app.post(
+  '/api/samples',
+  samplesRateLimiter,
+  async (req, res) => {
+    try {
+      const body = req.body;
+      if (body == null || typeof body !== 'object') {
+        return res.status(400).json({ error: 'Invalid JSON body' });
+      }
+      const raw = Array.isArray(body.samples) ? body.samples : [];
+      if (raw.length === 0) {
+        return res.status(400).json({ error: 'Missing or empty "samples" array' });
+      }
+      if (raw.length > MAX_SAMPLES) {
+        return res.status(400).json({ error: `Too many samples (max ${MAX_SAMPLES})` });
+      }
+      const samples = [];
+      for (const s of raw) {
+        const v = validateSample(s);
+        if (v) samples.push(v);
+      }
+      if (samples.length === 0) {
+        return res.status(400).json({ error: 'No valid samples (check chainId, value, timestamp)' });
+      }
+      await upsertSamples(samples);
+      return res.json({ ok: true, recorded: samples.length });
+    } catch (err) {
+      console.error('POST /api/samples', err);
+      return res.status(500).json({ error: 'Failed to record samples' });
+    }
+  }
+);
+
+app.get(
+  '/api/averages',
+  averagesRateLimiter,
+  async (req, res) => {
+    try {
+      const raw = req.query.chainIds;
+      const chainIds =
+        typeof raw === 'string'
+          ? raw.split(',').map((s) => s.trim()).filter(Boolean)
+          : [];
+      const validated = validateChainIds(chainIds);
+      if (!validated) {
+        return res.status(400).json({
+          error: 'Missing or invalid "chainIds" (e.g. ?chainIds=1,0,8453, max 20 allowed chain IDs)',
+        });
+      }
+      const averages = await getAllAverages(validated);
+      return res.json(averages);
+    } catch (err) {
+      console.error('GET /api/averages', err);
+      return res.status(500).json({ error: 'Failed to get averages' });
+    }
+  }
+);
+
+app.use((_req, res) => {
+  res.status(404).json({ error: 'Not found' });
+});
+
+app.use((err, _req, res, _next) => {
+  console.error('Unhandled error', err);
+  res.status(500).json({ error: 'Internal server error' });
+});
+
+app.listen(PORT, () => {
+  console.log(`Gas Surfer API listening on http://localhost:${PORT}`);
+});

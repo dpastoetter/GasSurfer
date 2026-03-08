@@ -22,11 +22,11 @@ export function FeeAveragesDisplay({ averages, unitLabel, compact }: FeeAverages
 
   if (compact) {
     return (
-      <p className="text-white/50 text-xs mt-2">
+      <p className="text-slate-500 dark:text-white/50 text-xs mt-2">
         Avg {parts.map((p, i) => (
           <span key={p.label}>
             {i > 0 && ' · '}
-            {p.label}: <span className="text-foam font-mono">{formatGwei(p.value)}</span>
+            {p.label}: <span className="text-surf-700 dark:text-foam font-mono">{formatGwei(p.value)}</span>
           </span>
         ))} {unitLabel}
       </p>
@@ -34,12 +34,12 @@ export function FeeAveragesDisplay({ averages, unitLabel, compact }: FeeAverages
   }
 
   return (
-    <div className="mt-3 pt-3 border-t border-white/10">
-      <p className="text-white/50 text-xs mb-1.5">Average fee (standard)</p>
+    <div className="mt-3 pt-3 border-t border-slate-200 dark:border-white/10">
+      <p className="text-slate-500 dark:text-white/50 text-xs mb-1.5">Average fee (standard)</p>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-1 text-xs">
         {parts.map((p) => (
           <span key={p.label}>
-            {p.label}: <span className="text-foam font-mono">{formatGwei(p.value)}</span> {unitLabel}
+            {p.label}: <span className="text-surf-700 dark:text-foam font-mono">{formatGwei(p.value)}</span> {unitLabel}
           </span>
         ))}
       </div>

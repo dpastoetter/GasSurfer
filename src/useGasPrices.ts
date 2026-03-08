@@ -98,7 +98,7 @@ async function fetchBitcoinFees(): Promise<ChainGas | null> {
     const hourFee = toNum(data.hourFee ?? data.minimumFee ?? 1);
     const halfHourFee = toNum(data.halfHourFee ?? data.hourFee ?? 1);
     const fastestFee = toNum(data.fastestFee ?? data.halfHourFee ?? 1);
-    let slowVal = Number.isFinite(hourFee) ? Math.round(hourFee) : 1;
+    const slowVal = Number.isFinite(hourFee) ? Math.round(hourFee) : 1;
     let stdVal = Number.isFinite(halfHourFee) ? Math.round(halfHourFee) : slowVal;
     let fastVal = Number.isFinite(fastestFee) ? Math.round(fastestFee) : stdVal;
     // Ensure slow ≤ standard ≤ fast (API can occasionally be out of order)
@@ -137,8 +137,8 @@ export function useGasPrices(refreshIntervalMs = 12_000) {
   }, []);
 
   useEffect(() => {
-    fetchAll();
     const id = setInterval(fetchAll, refreshIntervalMs);
+    queueMicrotask(() => fetchAll());
     return () => clearInterval(id);
   }, [fetchAll, refreshIntervalMs]);
 

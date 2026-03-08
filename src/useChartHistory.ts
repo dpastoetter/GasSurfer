@@ -13,21 +13,24 @@ export function useChartHistory(primary: ChainGas | undefined, maxSize = DEFAULT
 
   useEffect(() => {
     if (!primary) {
-      setValues([]);
       prevChainIdRef.current = undefined;
+      queueMicrotask(() => setValues([]));
       return;
     }
     if (prevChainIdRef.current !== primary.chainId) {
       prevChainIdRef.current = primary.chainId;
-      setValues([primary.gas.standard, primary.gas.standard]);
+      const v = primary.gas.standard;
+      queueMicrotask(() => setValues([v, v]));
       return;
     }
     const v = primary.gas.standard;
-    setValues((prev) => {
-      const next = [...prev.slice(1 - maxSize), v].slice(-maxSize);
-      return next.length >= 2 ? next : [v, v];
-    });
-  }, [primary?.chainId, primary?.gas.standard, maxSize]);
+    queueMicrotask(() =>
+      setValues((prev) => {
+        const next = [...prev.slice(1 - maxSize), v].slice(-maxSize);
+        return next.length >= 2 ? next : [v, v];
+      })
+    );
+  }, [primary, primary?.chainId, primary?.gas.standard, maxSize]);
 
   if (!primary) return [];
   return values.length >= 2 ? values : [primary.gas.standard, primary.gas.standard];

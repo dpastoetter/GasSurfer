@@ -32,7 +32,7 @@ const RPC_LINEA = ['https://rpc.linea.build', 'https://linea.llamarpc.com'];
 const RPC_GNOSIS = ['https://rpc.gnosischain.com', 'https://gnosis.llamarpc.com'];
 const RPC_ZKSYNC = ['https://zksync.drpc.org', 'https://mainnet.era.zksync.io'];
 const RPC_MANTLE = ['https://rpc.mantle.xyz', 'https://mantle.llamarpc.com'];
-const RPC_CELO = ['https://celo.llamarpc.com', 'https://rpc.ankr.com/celo'];
+const RPC_CELO = ['https://rpc.ankr.com/celo', 'https://celo.llamarpc.com'];
 
 const isDev = import.meta.env.DEV;
 
