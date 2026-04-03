@@ -3,6 +3,7 @@ import type { Currency } from './types';
 import type { FeeAverages } from './feeHistory';
 import { ChainCard } from './ChainCard';
 import { getCoinGeckoId } from './useGasPrices';
+import { useI18n } from './i18n/I18nContext';
 
 export type FeaturedTheme = 'bitcoin' | 'ethereum';
 
@@ -11,7 +12,8 @@ const THEME_CLASSES: Record<
   { wrapper: string; heading: string }
 > = {
   bitcoin: {
-    wrapper: 'rounded-2xl border-2 border-amber-500/60 dark:border-amber-400 bg-amber-100/80 dark:bg-amber-950/20 p-4 md:p-5 ring-1 ring-amber-400/50 [&_button]:border-amber-400/60',
+    wrapper:
+      'rounded-2xl border-2 border-amber-500/60 dark:border-amber-400 bg-amber-100/80 dark:bg-amber-950/20 p-4 md:p-5 ring-1 ring-amber-400/50 [&_button]:border-amber-400/60',
     heading: 'font-display text-lg tracking-wider text-amber-800 dark:text-amber-200/90 mb-3',
   },
   ethereum: {
@@ -44,6 +46,7 @@ export function FeaturedChainWidget({
   isCheapest,
 }: FeaturedChainWidgetProps) {
   const { wrapper, heading } = THEME_CLASSES[theme];
+  const { t } = useI18n();
 
   return (
     <div className={wrapper}>
@@ -61,8 +64,8 @@ export function FeaturedChainWidget({
           onClick={() => onSelectChain(chain.chainId)}
         />
       ) : (
-        <div className="rounded-2xl glass p-8 text-center text-slate-500 dark:text-white/50">
-          Loading…
+        <div className="rounded-2xl glass p-8 text-center text-slate-500 dark:text-white/50" aria-live="polite">
+          {t('loadingFeatured')}
         </div>
       )}
     </div>

@@ -1,0 +1,17 @@
+{
+  "name": "Gas Surfer",
+  "short_name": "Gas Surfer",
+  "description": "Ride the network when gas is cheap — multi-chain fees and surf conditions.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#011118",
+  "theme_color": "#011118",
+  "icons": [
+    {
+      "src": "/vite.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

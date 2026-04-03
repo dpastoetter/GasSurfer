@@ -4,13 +4,8 @@ import { formatGwei, gasCostInToken, formatFiat, feeUnitLabel, costLabel } from 
 import { getPriceInCurrency } from './useTokenPrices';
 import { FeeAveragesDisplay } from './FeeAveragesDisplay';
 import type { FeeAverages } from './feeHistory';
-
-const LABELS: Record<SurfCondition, { label: string; sub: string; emoji: string }> = {
-  'surfs-up': { label: "Surf's up", sub: 'Prime time to ride', emoji: '🏄' },
-  smooth: { label: 'Smooth', sub: 'Good conditions', emoji: '🌊' },
-  choppy: { label: 'Choppy', sub: 'Consider waiting', emoji: '〰️' },
-  storm: { label: 'Storm', sub: 'Hold off if you can', emoji: '⛈️' },
-};
+import { useI18n } from './i18n/I18nContext';
+import { conditionLabels } from './i18n/messages';
 
 interface SurfReportProps {
   condition: SurfCondition;
@@ -23,9 +18,19 @@ interface SurfReportProps {
   feeAverages?: FeeAverages;
 }
 
-export function SurfReport({ condition, gwei, chainName, coinGeckoId, prices, currency, chainId, feeAverages }: SurfReportProps) {
+export function SurfReport({
+  condition,
+  gwei,
+  chainName,
+  coinGeckoId,
+  prices,
+  currency,
+  chainId,
+  feeAverages,
+}: SurfReportProps) {
   const [copied, setCopied] = useState(false);
-  const { label, sub, emoji } = LABELS[condition];
+  const { t, ti, locale } = useI18n();
+  const { label, sub, emoji } = conditionLabels(locale)[condition];
   const costToken = gasCostInToken(chainId, gwei);
   const price = getPriceInCurrency(prices, coinGeckoId, currency);
   const costFiat = price != null ? costToken * price : null;
@@ -40,15 +45,14 @@ export function SurfReport({ condition, gwei, chainName, coinGeckoId, prices, cu
 
   const avg7d = feeAverages?.avg7d;
   const trendPercent =
-    avg7d != null && avg7d > 0 && Number.isFinite(gwei)
-      ? Math.round(((gwei - avg7d) / avg7d) * 100)
-      : null;
+    avg7d != null && avg7d > 0 && Number.isFinite(gwei) ? Math.round(((gwei - avg7d) / avg7d) * 100) : null;
 
   return (
-    <div className="text-center">
+    <div className="text-center" role="region" aria-label={t('surfReportRegion')}>
       <div
         className="inline-flex items-center justify-center w-24 h-24 rounded-full text-5xl mb-4 animate-float glass-strong"
         style={{ animationDuration: '3s' }}
+        aria-hidden
       >
         {emoji}
       </div>
@@ -63,18 +67,19 @@ export function SurfReport({ condition, gwei, chainName, coinGeckoId, prices, cu
         <button
           type="button"
           onClick={copyFee}
-          className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium bg-slate-200/60 dark:bg-white/10 hover:bg-slate-300/60 dark:hover:bg-white/20 text-slate-700 dark:text-surf-200 transition-colors"
-          title="Copy fee to clipboard"
+          className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium bg-slate-200/60 dark:bg-white/10 hover:bg-slate-300/60 dark:hover:bg-white/20 text-slate-700 dark:text-surf-200 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-surf-400/50"
+          title={t('copyFee')}
+          aria-label={t('copyFee')}
         >
-          {copied ? '✓ Copied' : '📋 Copy'}
+          {copied ? `✓ ${t('copied')}` : `📋 ${t('copy')}`}
         </button>
       </p>
       {trendPercent != null && (
         <p className="text-surf-600 dark:text-surf-300/90 text-sm mt-1">
           {trendPercent <= 0 ? (
-            <span className="text-emerald-600 dark:text-emerald-300/90">↓ {Math.abs(trendPercent)}% vs 7d avg</span>
+            <span className="text-emerald-600 dark:text-emerald-300/90">{ti('trendDown', { n: Math.abs(trendPercent) })}</span>
           ) : (
-            <span className="text-amber-600 dark:text-amber-300/90">↑ {trendPercent}% vs 7d avg</span>
+            <span className="text-amber-600 dark:text-amber-300/90">{ti('trendUp', { n: trendPercent })}</span>
           )}
         </p>
       )}
@@ -85,7 +90,7 @@ export function SurfReport({ condition, gwei, chainName, coinGeckoId, prices, cu
       )}
       {feeAverages && (
         <div className="mt-6 max-w-md mx-auto">
-          <FeeAveragesDisplay averages={feeAverages} unitLabel={feeUnitLabel(chainId)} />
+          <FeeAveragesDisplay averages={feeAverages} unitLabel={feeUnitLabel(chainId)} showExplainerWhenEmpty />
         </div>
       )}
     </div>

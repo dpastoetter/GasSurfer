@@ -6,9 +6,11 @@
 
 ### Screenshots
 
-| Desktop | Mobile | Full page |
-|--------|--------|-----------|
-| [![Hero](docs/screenshots/hero.png)](docs/screenshots/hero.png) | [![Mobile](docs/screenshots/mobile.png)](docs/screenshots/mobile.png) | [![Full](docs/screenshots/full.png)](docs/screenshots/full.png) |
+_Regenerated with `npm run screenshot` while the dev server is running (see [Pushing to GitHub](#pushing-to-github))._
+
+| Desktop hero (1280×800) | Mobile (390×844) | Full page |
+|------------------------|------------------|-----------|
+| [![Gas Surfer desktop hero: surf report and featured chains](docs/screenshots/hero.png)](docs/screenshots/hero.png) | [![Gas Surfer mobile layout](docs/screenshots/mobile.png)](docs/screenshots/mobile.png) | [![Gas Surfer full scroll](docs/screenshots/full.png)](docs/screenshots/full.png) |
 
 ---
 

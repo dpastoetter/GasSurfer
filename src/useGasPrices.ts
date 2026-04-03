@@ -1,7 +1,10 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import type { ChainGas, GasTier, SurfCondition } from './types';
 import { BITCOIN_CHAIN_ID } from './types';
 import { EVM_CHAINS, MEMPOOL_API } from './config/chains';
+
+const EVM_BATCH_SIZE = 4;
+const EVM_BATCH_DELAY_MS = 100;
 
 function getCondition(standardFee: number, chainId: number): SurfCondition {
   if (chainId === BITCOIN_CHAIN_ID) {
@@ -21,15 +24,10 @@ function getCondition(standardFee: number, chainId: number): SurfCondition {
   return 'storm';
 }
 
-/**
- * Converts eth_gasPrice result to gwei.
- * Spec: result is hex string in wei. Some RPCs return a number instead;
- * if it's small (< 1e9) it's likely already gwei (e.g. Gnosis 2.9, L2s 0.001).
- */
 function weiToGwei(result: string | number): number {
   if (typeof result === 'number') {
-    if (result >= 1e9) return result / 1e9; // wei
-    return result; // already gwei (common for some L2 / Gnosis RPCs)
+    if (result >= 1e9) return result / 1e9;
+    return result;
   }
   const wei = result.startsWith('0x') ? parseInt(result, 16) : parseInt(result, 10);
   return wei / 1e9;
@@ -85,6 +83,20 @@ async function fetchChainGas(chain: (typeof EVM_CHAINS)[number]): Promise<ChainG
   return null;
 }
 
+/** Stagger EVM RPC fetches to reduce proxy / rate-limit pressure. */
+async function fetchAllEvmStaggered(): Promise<(ChainGas | null)[]> {
+  const out: (ChainGas | null)[] = [];
+  for (let i = 0; i < EVM_CHAINS.length; i += EVM_BATCH_SIZE) {
+    const batch = EVM_CHAINS.slice(i, i + EVM_BATCH_SIZE);
+    const chunk = await Promise.all(batch.map(fetchChainGas));
+    out.push(...chunk);
+    if (i + EVM_BATCH_SIZE < EVM_CHAINS.length) {
+      await new Promise((r) => setTimeout(r, EVM_BATCH_DELAY_MS));
+    }
+  }
+  return out;
+}
+
 function toNum(v: unknown): number {
   if (v == null) return NaN;
   const n = typeof v === 'number' ? v : Number(v);
@@ -101,7 +113,6 @@ async function fetchBitcoinFees(): Promise<ChainGas | null> {
     const slowVal = Number.isFinite(hourFee) ? Math.round(hourFee) : 1;
     let stdVal = Number.isFinite(halfHourFee) ? Math.round(halfHourFee) : slowVal;
     let fastVal = Number.isFinite(fastestFee) ? Math.round(fastestFee) : stdVal;
-    // Ensure slow ≤ standard ≤ fast (API can occasionally be out of order)
     if (slowVal > stdVal) stdVal = slowVal;
     if (stdVal > fastVal) fastVal = stdVal;
     const gas: GasTier = { slow: slowVal, standard: stdVal, fast: fastVal };
@@ -122,17 +133,40 @@ export function useGasPrices(refreshIntervalMs = 12_000) {
   const [chains, setChains] = useState<ChainGas[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [stale, setStale] = useState(false);
+  const lastGoodRef = useRef<ChainGas[]>([]);
 
   const fetchAll = useCallback(async () => {
     setError(null);
-    const [evmResults, btc] = await Promise.all([
-      Promise.all(EVM_CHAINS.map(fetchChainGas)),
-      fetchBitcoinFees(),
-    ]);
-    const valid = evmResults.filter((r): r is ChainGas => r !== null);
-    if (btc) valid.push(btc);
-    setChains(valid);
-    if (valid.length === 0) setError('Could not load gas prices');
+    try {
+      const [evmResults, btc] = await Promise.all([fetchAllEvmStaggered(), fetchBitcoinFees()]);
+      const valid = evmResults.filter((r): r is ChainGas => r !== null);
+      if (btc) valid.push(btc);
+
+      if (valid.length > 0) {
+        lastGoodRef.current = valid;
+        setStale(false);
+        setChains(valid);
+        setError(null);
+      } else if (lastGoodRef.current.length > 0) {
+        setChains(lastGoodRef.current);
+        setStale(true);
+        setError('Could not refresh gas prices');
+      } else {
+        setChains([]);
+        setStale(false);
+        setError('Could not load gas prices');
+      }
+    } catch {
+      if (lastGoodRef.current.length > 0) {
+        setChains(lastGoodRef.current);
+        setStale(true);
+        setError('Could not refresh gas prices');
+      } else {
+        setChains([]);
+        setError('Could not load gas prices');
+      }
+    }
     setLoading(false);
   }, []);
 
@@ -142,7 +176,7 @@ export function useGasPrices(refreshIntervalMs = 12_000) {
     return () => clearInterval(id);
   }, [fetchAll, refreshIntervalMs]);
 
-  return { chains, loading, error, refetch: fetchAll };
+  return { chains, loading, error, stale, refetch: fetchAll };
 }
 
 export const CHAIN_COINGECKO_IDS: Record<number, string> = {
