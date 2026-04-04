@@ -15,8 +15,19 @@ import { EvmChainToolbar, type EvmSort } from './components/EvmChainToolbar';
 import { NetworkSummaryStrip } from './components/NetworkSummaryStrip';
 import { FeeAlertsPanel } from './components/FeeAlertsPanel';
 import { LocaleSelector } from './components/LocaleSelector';
+import { ComparePanel } from './components/ComparePanel';
+import { TxEstimatorPanel } from './components/TxEstimatorPanel';
+import { LearnDrawer } from './components/LearnDrawer';
+import { OnboardingTour } from './components/OnboardingTour';
+import { ShareSnapshotButton } from './components/ShareSnapshotButton';
+import { WeeklyRecapModal } from './components/WeeklyRecapModal';
 import { useUrlSync, readUrlParams } from './hooks/useUrlSync';
+import { useFavorites } from './hooks/useFavorites';
+import { useMultiChainSparkHistory } from './hooks/useMultiChainSparkHistory';
+import { useOnboarding } from './hooks/useOnboarding';
+import { useDelightSurfsUp } from './hooks/useDelightSurfsUp';
 import { useI18n } from './i18n/I18nContext';
+import { appendFeeTick } from './lib/feeSamplesDb';
 import type { Currency, SurfCondition } from './types';
 import { feeUnitLabel, isFeaturedChain, gasCostInToken } from './types';
 
@@ -51,6 +62,13 @@ function App() {
   const [theme, setTheme] = useState<Theme>(loadTheme);
   const [evmSearch, setEvmSearch] = useState('');
   const [evmSort, setEvmSort] = useState<EvmSort>('fee');
+  const { favoriteIds, toggleFavorite, isFavorite } = useFavorites();
+  const sparkHistory = useMultiChainSparkHistory(chains);
+  const [compareIds, setCompareIds] = useState<number[]>([]);
+  const [compareOpen, setCompareOpen] = useState(false);
+  const [learnOpen, setLearnOpen] = useState(false);
+  const [weeklyOpen, setWeeklyOpen] = useState(false);
+  const { onboardingOpen, dismissOnboarding, reopenOnboarding, tourKey } = useOnboarding();
 
   const effectiveChainId = useMemo(() => {
     if (chains.length === 0) return selectedChainId;
@@ -70,6 +88,7 @@ function App() {
 
   const primary = chains.find((c) => c.chainId === effectiveChainId) ?? chains[0];
   const chartValues = useChartHistory(primary, CHART_HISTORY_SIZE);
+  const delightBurst = useDelightSurfsUp(primary, primary ? isFavorite(primary.chainId) : false);
 
   const bitcoin = chains.find((c) => c.chainId === 0);
   const ethereum = chains.find((c) => c.chainId === 1);
@@ -85,6 +104,13 @@ function App() {
     return sorted;
   }, [evmChains, evmSearch, evmSort]);
 
+  const orderedEvmChains = useMemo(() => {
+    const favSet = new Set(favoriteIds);
+    const favOrdered = favoriteIds.map((id) => filteredEvmChains.find((c) => c.chainId === id)).filter((c): c is NonNullable<typeof c> => c != null);
+    const rest = filteredEvmChains.filter((c) => !favSet.has(c.chainId));
+    return [...favOrdered, ...rest];
+  }, [filteredEvmChains, favoriteIds]);
+
   const cheapestChain = useMemo(() => {
     let best: { chain: (typeof chains)[0]; costFiat: number } | null = null;
     for (const chain of chains) {
@@ -99,6 +125,24 @@ function App() {
 
   const latestUpdate = chains.length > 0 ? Math.max(...chains.map((c) => c.updatedAt)) : 0;
 
+  const chainsFingerprint = useMemo(
+    () => chains.map((c) => `${c.chainId}:${c.gas.standard}:${c.updatedAt}`).join('|'),
+    [chains]
+  );
+
+  useEffect(() => {
+    if (chains.length === 0) return;
+    void appendFeeTick(chains, stale);
+  }, [chainsFingerprint, stale, chains]);
+
+  const toggleCompare = (chainId: number) => {
+    setCompareIds((prev) => {
+      if (prev.includes(chainId)) return prev.filter((id) => id !== chainId);
+      if (prev.length >= 3) return prev;
+      return [...prev, chainId];
+    });
+  };
+
   const bestDealLine =
     !loading && cheapestChain && chains.length > 1 ? (
       <p className="mt-3 text-surf-700 dark:text-foam/90 text-sm font-medium">
@@ -110,6 +154,18 @@ function App() {
 
   return (
     <div className="min-h-screen wave-bg text-slate-800 dark:text-white font-sans transition-colors duration-300">
+      <OnboardingTour key={tourKey} open={onboardingOpen} onDismiss={dismissOnboarding} />
+      <LearnDrawer open={learnOpen} onClose={() => setLearnOpen(false)} />
+      <ComparePanel
+        open={compareOpen}
+        onClose={() => setCompareOpen(false)}
+        chains={chains}
+        compareIds={compareIds}
+        prices={prices}
+        currency={currency}
+      />
+      <WeeklyRecapModal open={weeklyOpen} onClose={() => setWeeklyOpen(false)} />
+
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
         <div className="absolute bottom-0 left-0 right-0 h-48 wave-overlay" />
         <div
@@ -132,6 +188,37 @@ function App() {
             <ThemeToggle theme={theme} onToggle={() => setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'))} />
             <LocaleSelector />
             <CurrencySelector value={currency} onChange={setCurrency} />
+            <button
+              type="button"
+              onClick={() => setLearnOpen(true)}
+              className="rounded-xl glass border border-slate-300/50 dark:border-white/20 px-3 py-2.5 text-sm font-medium text-slate-600 dark:text-surf-200 hover:bg-slate-200/50 dark:hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-surf-400/50"
+            >
+              {t('learnOpen')}
+            </button>
+            <button
+              type="button"
+              onClick={reopenOnboarding}
+              className="rounded-xl glass border border-slate-300/50 dark:border-white/20 px-3 py-2.5 text-sm font-medium text-slate-600 dark:text-surf-200 hover:bg-slate-200/50 dark:hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-surf-400/50"
+            >
+              {t('helpTour')}
+            </button>
+            <button
+              type="button"
+              onClick={() => setCompareOpen(true)}
+              className="rounded-xl glass border border-slate-300/50 dark:border-white/20 px-3 py-2.5 text-sm font-medium text-slate-600 dark:text-surf-200 hover:bg-slate-200/50 dark:hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-surf-400/50"
+            >
+              {ti('compareOpen', { n: compareIds.length })}
+            </button>
+            <button
+              type="button"
+              onClick={() => setWeeklyOpen(true)}
+              className="rounded-xl glass border border-slate-300/50 dark:border-white/20 px-3 py-2.5 text-sm font-medium text-slate-600 dark:text-surf-200 hover:bg-slate-200/50 dark:hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-surf-400/50"
+            >
+              {t('weeklyOpen')}
+            </button>
+            {!loading && chains.length > 0 && (
+              <ShareSnapshotButton chain={primary} coinGeckoId={getCoinGeckoId(primary?.chainId ?? 1)} prices={prices} currency={currency} />
+            )}
             {!loading && chains.length > 0 && (
               <>
                 <button
@@ -181,6 +268,12 @@ function App() {
         ) : (
           <div className="animate-in fade-in duration-500" key="loaded">
             <FeeAlertsPanel chain={primary} />
+            <TxEstimatorPanel
+              chain={primary}
+              coinGeckoId={getCoinGeckoId(primary?.chainId ?? 1)}
+              prices={prices}
+              currency={currency}
+            />
             <section className="mb-12 md:mb-16">
               <div className="glass-strong rounded-3xl p-8 md:p-12 border border-slate-200/50 dark:border-white/10 shadow-2xl">
                 {primary && (
@@ -193,6 +286,7 @@ function App() {
                     prices={prices}
                     currency={currency}
                     feeAverages={feeAverages[primary.chainId]}
+                    wrapperClassName={delightBurst ? 'surfs-up-burst' : ''}
                   />
                 )}
               </div>
@@ -211,6 +305,11 @@ function App() {
                   currency={currency}
                   feeAverages={bitcoin ? feeAverages[bitcoin.chainId] : undefined}
                   isCheapest={cheapestChain?.chainId === bitcoin?.chainId}
+                  sparkHistory={sparkHistory}
+                  isFavorite={isFavorite}
+                  onToggleFavorite={toggleFavorite}
+                  compareIds={compareIds}
+                  onToggleCompare={toggleCompare}
                 />
                 <FeaturedChainWidget
                   chain={ethereum ?? null}
@@ -222,12 +321,17 @@ function App() {
                   currency={currency}
                   feeAverages={ethereum ? feeAverages[ethereum.chainId] : undefined}
                   isCheapest={cheapestChain?.chainId === ethereum?.chainId}
+                  sparkHistory={sparkHistory}
+                  isFavorite={isFavorite}
+                  onToggleFavorite={toggleFavorite}
+                  compareIds={compareIds}
+                  onToggleCompare={toggleCompare}
                 />
               </div>
               <h2 className="font-display text-2xl tracking-wider text-surf-700 dark:text-surf-200 mb-4">{t('evmChains')}</h2>
               <EvmChainToolbar search={evmSearch} onSearchChange={setEvmSearch} sort={evmSort} onSortChange={setEvmSort} />
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {filteredEvmChains.map((chain) => (
+                {orderedEvmChains.map((chain) => (
                   <ChainCard
                     key={chain.chainId}
                     chain={chain}
@@ -238,6 +342,12 @@ function App() {
                     isPrimary={chain.chainId === effectiveChainId}
                     isCheapest={cheapestChain?.chainId === chain.chainId}
                     onClick={() => setSelectedChainId(chain.chainId)}
+                    sparkValues={sparkHistory[chain.chainId]}
+                    isFavorite={isFavorite(chain.chainId)}
+                    onToggleFavorite={() => toggleFavorite(chain.chainId)}
+                    compareSelected={compareIds.includes(chain.chainId)}
+                    compareDisabled={compareIds.length >= 3}
+                    onToggleCompare={() => toggleCompare(chain.chainId)}
                   />
                 ))}
               </div>

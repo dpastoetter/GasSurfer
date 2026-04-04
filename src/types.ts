@@ -25,6 +25,8 @@ export interface ChainGas {
   gas: GasTier;
   condition: SurfCondition;
   updatedAt: number;
+  /** Human-readable data source (e.g. RPC hostname, mempool.space) */
+  dataSource?: string;
 }
 
 /** Format gwei/sat per vB for display; uses more decimals for very small L2 values */

@@ -10,7 +10,7 @@ _Regenerated with `npm run screenshot` while the dev server is running (see [Pus
 
 | Desktop hero (1280×800) | Mobile (390×844) | Full page |
 |------------------------|------------------|-----------|
-| [![Gas Surfer desktop hero: surf report and featured chains](docs/screenshots/hero.png)](docs/screenshots/hero.png) | [![Gas Surfer mobile layout](docs/screenshots/mobile.png)](docs/screenshots/mobile.png) | [![Gas Surfer full scroll](docs/screenshots/full.png)](docs/screenshots/full.png) |
+| [![Gas Surfer desktop: surf report, featured chains, toolbar, learn/compare controls](docs/screenshots/hero.png)](docs/screenshots/hero.png) | [![Gas Surfer mobile layout with controls](docs/screenshots/mobile.png)](docs/screenshots/mobile.png) | [![Gas Surfer full-page scroll](docs/screenshots/full.png)](docs/screenshots/full.png) |
 
 ---
 
@@ -28,6 +28,12 @@ _Regenerated with `npm run screenshot` while the dev server is running (see [Pus
 - **Skeleton loading** — Layout placeholders while gas data loads
 - **Copy fee** — One-click copy of the current chain’s standard fee
 - **Auto-refresh** — Gas ~12s, prices ~1 min. No API keys required for the frontend.
+- **Favorites & compare** — Star chains (pinned order), compare up to three side-by-side with freshness/source hints
+- **Learn & tour** — Learn drawer (gwei / L2 / Bitcoin) and optional first-visit onboarding
+- **Tx estimator** — Rough fee for preset gas limits on the selected EVM chain (+ fiat)
+- **Card sparklines** — Tiny recent standard-fee trends on chain cards
+- **Share & recap** — PNG snapshot (share or download) and a local-only weekly recap (IndexedDB samples)
+- **Trust cues** — Per-chain data age and RPC / mempool source label
 
 ---
 

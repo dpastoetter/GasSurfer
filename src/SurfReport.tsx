@@ -16,6 +16,8 @@ interface SurfReportProps {
   prices: Record<string, Partial<Record<Currency, number>>>;
   currency: Currency;
   feeAverages?: FeeAverages;
+  /** Extra classes on the outer wrapper (e.g. delight animation). */
+  wrapperClassName?: string;
 }
 
 export function SurfReport({
@@ -27,6 +29,7 @@ export function SurfReport({
   currency,
   chainId,
   feeAverages,
+  wrapperClassName = '',
 }: SurfReportProps) {
   const [copied, setCopied] = useState(false);
   const { t, ti, locale } = useI18n();
@@ -48,7 +51,7 @@ export function SurfReport({
     avg7d != null && avg7d > 0 && Number.isFinite(gwei) ? Math.round(((gwei - avg7d) / avg7d) * 100) : null;
 
   return (
-    <div className="text-center" role="region" aria-label={t('surfReportRegion')}>
+    <div className={`text-center ${wrapperClassName}`} role="region" aria-label={t('surfReportRegion')}>
       <div
         className="inline-flex items-center justify-center w-24 h-24 rounded-full text-5xl mb-4 animate-float glass-strong"
         style={{ animationDuration: '3s' }}

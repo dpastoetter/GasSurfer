@@ -32,6 +32,11 @@ interface FeaturedChainWidgetProps {
   currency: Currency;
   feeAverages: FeeAverages | undefined;
   isCheapest?: boolean;
+  sparkHistory: Record<number, number[]>;
+  isFavorite: (chainId: number) => boolean;
+  onToggleFavorite: (chainId: number) => void;
+  compareIds: number[];
+  onToggleCompare: (chainId: number) => void;
 }
 
 export function FeaturedChainWidget({
@@ -44,6 +49,11 @@ export function FeaturedChainWidget({
   currency,
   feeAverages,
   isCheapest,
+  sparkHistory,
+  isFavorite,
+  onToggleFavorite,
+  compareIds,
+  onToggleCompare,
 }: FeaturedChainWidgetProps) {
   const { wrapper, heading } = THEME_CLASSES[theme];
   const { t } = useI18n();
@@ -62,6 +72,12 @@ export function FeaturedChainWidget({
           isCheapest={isCheapest}
           featured
           onClick={() => onSelectChain(chain.chainId)}
+          sparkValues={sparkHistory[chain.chainId]}
+          isFavorite={isFavorite(chain.chainId)}
+          onToggleFavorite={() => onToggleFavorite(chain.chainId)}
+          compareSelected={compareIds.includes(chain.chainId)}
+          compareDisabled={compareIds.length >= 3}
+          onToggleCompare={() => onToggleCompare(chain.chainId)}
         />
       ) : (
         <div className="rounded-2xl glass p-8 text-center text-slate-500 dark:text-white/50" aria-live="polite">

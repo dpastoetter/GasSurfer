@@ -14,18 +14,31 @@ const OUT_DIR = join(__dirname, '..', 'docs', 'screenshots');
 const BASE = process.env.BASE_URL || 'http://localhost:5173';
 const WAIT_AFTER_LOAD = Number(process.env.SCREENSHOT_WAIT) || 5000;
 
+/** Skip first-visit onboarding so captures show the main dashboard. */
+async function loadDashboard(page) {
+  await page.goto(BASE, { waitUntil: 'networkidle', timeout: 45000 });
+  await page.evaluate(() => {
+    try {
+      localStorage.setItem('gas-surfer-onboard-v1', '1');
+    } catch {
+      /* ignore */
+    }
+  });
+  await page.reload({ waitUntil: 'networkidle', timeout: 45000 });
+}
+
 async function main() {
   await mkdir(OUT_DIR, { recursive: true });
   const browser = await chromium.launch();
   try {
     const page = await browser.newPage();
     await page.setViewportSize({ width: 1280, height: 800 });
-    await page.goto(BASE, { waitUntil: 'networkidle', timeout: 45000 });
+    await loadDashboard(page);
     await page.waitForTimeout(WAIT_AFTER_LOAD);
     await page.screenshot({ path: join(OUT_DIR, 'hero.png'), fullPage: false });
     await page.screenshot({ path: join(OUT_DIR, 'full.png'), fullPage: true });
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.goto(BASE, { waitUntil: 'networkidle', timeout: 45000 });
+    await loadDashboard(page);
     await page.waitForTimeout(Math.min(WAIT_AFTER_LOAD, 3000));
     await page.screenshot({ path: join(OUT_DIR, 'mobile.png'), fullPage: false });
     console.log('Screenshots saved to docs/screenshots/');

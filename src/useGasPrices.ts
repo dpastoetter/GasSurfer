@@ -33,6 +33,15 @@ function weiToGwei(result: string | number): number {
   return wei / 1e9;
 }
 
+function rpcHostname(rpcUrl: string): string {
+  try {
+    const u = new URL(rpcUrl);
+    return u.hostname.replace(/^www\./, '');
+  } catch {
+    return 'RPC';
+  }
+}
+
 async function fetchGasFromRpc(rpcUrl: string): Promise<number | null> {
   try {
     const res = await fetch(rpcUrl, {
@@ -77,6 +86,7 @@ async function fetchChainGas(chain: (typeof EVM_CHAINS)[number]): Promise<ChainG
         gas,
         condition: getCondition(gas.standard, chain.chainId),
         updatedAt: Date.now(),
+        dataSource: rpcHostname(chain.rpcUrls[i]),
       };
     }
   }
@@ -123,6 +133,7 @@ async function fetchBitcoinFees(): Promise<ChainGas | null> {
       gas,
       condition: getCondition(gas.standard, BITCOIN_CHAIN_ID),
       updatedAt: Date.now(),
+      dataSource: 'mempool.space',
     };
   } catch {
     return null;
