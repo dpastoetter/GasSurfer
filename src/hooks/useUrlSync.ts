@@ -8,7 +8,7 @@ const LANG_PARAM = 'lang';
 export type UrlInitial = {
   chainId: number | null;
   currency: Currency | null;
-  lang: 'en' | 'de' | null;
+  lang: 'en' | 'de' | 'es' | null;
 };
 
 export function readUrlParams(): UrlInitial {
@@ -22,7 +22,7 @@ export function readUrlParams(): UrlInitial {
   return {
     chainId: Number.isFinite(chainId) ? chainId : null,
     currency: validCur,
-    lang: lang === 'de' || lang === 'en' ? lang : null,
+    lang: lang === 'de' || lang === 'en' || lang === 'es' ? lang : null,
   };
 }
 

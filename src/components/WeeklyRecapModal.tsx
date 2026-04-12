@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { loadTicksSince, type FeeTickRow } from '../lib/feeSamplesDb';
 import { formatGwei } from '../types';
 import { useI18n } from '../i18n/I18nContext';
+import { useFocusTrap } from '../hooks/useFocusTrap';
 
 interface WeeklyRecapModalProps {
   open: boolean;
@@ -25,6 +26,8 @@ function analyze(rows: FeeTickRow[]) {
 }
 
 export function WeeklyRecapModal({ open, onClose }: WeeklyRecapModalProps) {
+  const panelRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(panelRef, open);
   const { t, ti } = useI18n();
   const [stats, setStats] = useState<ReturnType<typeof analyze>>(null);
 
@@ -38,7 +41,10 @@ export function WeeklyRecapModal({ open, onClose }: WeeklyRecapModalProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="weekly-title">
-      <div className="w-full max-w-md rounded-2xl glass-strong border border-slate-200/50 dark:border-white/15 shadow-2xl p-6">
+      <div
+        ref={panelRef}
+        className="w-full max-w-md rounded-2xl glass-strong border border-slate-200/50 dark:border-white/15 shadow-2xl p-6"
+      >
         <div className="flex items-center justify-between gap-2 mb-3">
           <h2 id="weekly-title" className="font-display text-xl tracking-wide text-slate-900 dark:text-white">
             {t('weeklyTitle')}

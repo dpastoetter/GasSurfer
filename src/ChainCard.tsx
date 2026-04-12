@@ -31,6 +31,7 @@ interface ChainCardProps {
   compareSelected?: boolean;
   compareDisabled?: boolean;
   onToggleCompare?: () => void;
+  onOpenDetail?: () => void;
 }
 
 export function ChainCard({
@@ -49,6 +50,7 @@ export function ChainCard({
   compareSelected,
   compareDisabled,
   onToggleCompare,
+  onOpenDetail,
 }: ChainCardProps) {
   const { t, ti, locale } = useI18n();
   const gradient = CONDITION_COLORS[chain.condition];
@@ -110,6 +112,20 @@ export function ChainCard({
             {compareSelected ? t('compareOn') : t('compareOff')}
           </button>
         )}
+        {onOpenDetail && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpenDetail();
+            }}
+            className="rounded-lg px-2 py-1 text-[10px] font-medium bg-white/70 dark:bg-black/30 border border-slate-300/40 dark:border-white/15 hover:bg-white dark:hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-surf-400/50"
+            aria-label={t('chainDetailButton')}
+            title={t('chainDetailButton')}
+          >
+            ℹ
+          </button>
+        )}
       </div>
 
       <div
@@ -167,6 +183,24 @@ export function ChainCard({
           </div>
         </div>
         <p className="text-slate-500 dark:text-white/40 text-xs mt-2">{feeUnitLabel(chain.chainId)}</p>
+        {chain.eip1559 && chain.chainId !== BITCOIN_CHAIN_ID && (
+          <p className="text-slate-500 dark:text-white/40 text-[10px] mt-0.5 leading-snug">
+            {ti('eip1559Line', {
+              base: formatGwei(chain.eip1559.baseFeeGwei),
+              tip: formatGwei(chain.eip1559.priorityFeeGwei),
+            })}
+          </p>
+        )}
+        {chain.bitcoinExtras && chain.chainId === BITCOIN_CHAIN_ID && (
+          <div className="text-slate-500 dark:text-white/40 text-[10px] mt-0.5 space-y-0.5">
+            {chain.bitcoinExtras.economyFee != null && (
+              <p>{ti('btcEconomyLine', { fee: formatGwei(chain.bitcoinExtras.economyFee) })}</p>
+            )}
+            {chain.bitcoinExtras.fastestFee != null && (
+              <p>{ti('btcFastestLine', { fee: formatGwei(chain.bitcoinExtras.fastestFee) })}</p>
+            )}
+          </div>
+        )}
         {chain.chainId === BITCOIN_CHAIN_ID && (
           <p className="text-slate-400 dark:text-white/30 text-[10px] mt-0.5">{t('btcBlockHint')}</p>
         )}

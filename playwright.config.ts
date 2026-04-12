@@ -1,0 +1,18 @@
+import { defineConfig, devices } from '@playwright/test';
+
+export default defineConfig({
+  testDir: 'tests',
+  timeout: 120_000,
+  forbidOnly: !!process.env.CI,
+  retries: process.env.CI ? 1 : 0,
+  use: {
+    ...devices['Desktop Chrome'],
+    baseURL: 'http://127.0.0.1:4173',
+  },
+  webServer: {
+    command: 'npm run build && vite preview --host 127.0.0.1 --port 4173',
+    url: 'http://127.0.0.1:4173',
+    reuseExistingServer: !process.env.CI,
+    timeout: 120_000,
+  },
+});

@@ -84,7 +84,7 @@ function FeeAlertsPanelInner({ chain }: { chain: ChainGas }) {
 
   return (
     <div className="rounded-2xl glass border border-slate-200/50 dark:border-white/10 p-4 mb-6 text-sm">
-      <h3 className="font-display text-lg tracking-wide text-slate-800 dark:text-white mb-2">{t('alertsTitle')}</h3>
+      <h2 className="font-display text-lg tracking-wide text-slate-800 dark:text-white mb-2">{t('alertsTitle')}</h2>
       <p className="text-slate-500 dark:text-white/50 text-xs mb-3">{t('alertsPrivacy')}</p>
       {perm === 'unsupported' ? null : perm !== 'granted' ? (
         <button

@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import type { ChainGas, Currency } from '../types';
 import { formatGwei, gasCostInToken, formatFiat, costLabel } from '../types';
 import { getPriceInCurrency } from '../useTokenPrices';
@@ -5,6 +6,7 @@ import { useI18n } from '../i18n/I18nContext';
 import { conditionLabels } from '../i18n/messages';
 import { getCoinGeckoId } from '../useGasPrices';
 import { DataFreshness } from './DataFreshness';
+import { useFocusTrap } from '../hooks/useFocusTrap';
 
 interface ComparePanelProps {
   open: boolean;
@@ -16,6 +18,8 @@ interface ComparePanelProps {
 }
 
 export function ComparePanel({ open, onClose, chains, compareIds, prices, currency }: ComparePanelProps) {
+  const panelRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(panelRef, open);
   const { t, locale } = useI18n();
   const labels = conditionLabels(locale);
   const selected = compareIds
@@ -33,6 +37,7 @@ export function ComparePanel({ open, onClose, chains, compareIds, prices, curren
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
       <div
+        ref={panelRef}
         className="w-full max-w-4xl max-h-[85vh] overflow-auto rounded-2xl glass-strong border border-slate-200/50 dark:border-white/15 shadow-2xl p-4 md:p-6"
         onClick={(e) => e.stopPropagation()}
       >

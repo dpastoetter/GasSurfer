@@ -32,6 +32,14 @@ async function getDb() {
     )
   `);
   db.run(`CREATE INDEX IF NOT EXISTS idx_daily_fees_date ON daily_fees(date)`);
+  db.run(`
+    CREATE TABLE IF NOT EXISTS fee_ticks (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      created_at INTEGER NOT NULL,
+      payload TEXT NOT NULL
+    )
+  `);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_fee_ticks_created ON fee_ticks(created_at)`);
   return db;
 }
 
@@ -131,6 +139,31 @@ export async function getAllAverages(chainIds) {
     result[chainId] = await getAverages(chainId);
   }
   return result;
+}
+
+/**
+ * Store a validated snapshot JSON string (from POST /api/ticks).
+ * @param {string} jsonStr
+ */
+export async function insertFeeTick(jsonStr) {
+  const d = await getDb();
+  d.run(`INSERT INTO fee_ticks (created_at, payload) VALUES (?, ?)`, [Date.now(), jsonStr]);
+  persist();
+}
+
+/**
+ * @returns {string|null} Latest snapshot JSON or null
+ */
+export async function getLatestSnapshotJson() {
+  const d = await getDb();
+  const stmt = d.prepare(`SELECT payload FROM fee_ticks ORDER BY id DESC LIMIT 1`);
+  if (!stmt.step()) {
+    stmt.free();
+    return null;
+  }
+  const row = stmt.getAsObject();
+  stmt.free();
+  return typeof row.payload === 'string' ? row.payload : null;
 }
 
 export function close() {

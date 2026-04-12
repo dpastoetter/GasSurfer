@@ -37,6 +37,7 @@ interface FeaturedChainWidgetProps {
   onToggleFavorite: (chainId: number) => void;
   compareIds: number[];
   onToggleCompare: (chainId: number) => void;
+  onOpenDetail?: (chainId: number) => void;
 }
 
 export function FeaturedChainWidget({
@@ -54,6 +55,7 @@ export function FeaturedChainWidget({
   onToggleFavorite,
   compareIds,
   onToggleCompare,
+  onOpenDetail,
 }: FeaturedChainWidgetProps) {
   const { wrapper, heading } = THEME_CLASSES[theme];
   const { t } = useI18n();
@@ -78,6 +80,7 @@ export function FeaturedChainWidget({
           compareSelected={compareIds.includes(chain.chainId)}
           compareDisabled={compareIds.length >= 3}
           onToggleCompare={() => onToggleCompare(chain.chainId)}
+          onOpenDetail={onOpenDetail ? () => onOpenDetail(chain.chainId) : undefined}
         />
       ) : (
         <div className="rounded-2xl glass p-8 text-center text-slate-500 dark:text-white/50" aria-live="polite">

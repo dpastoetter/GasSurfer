@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import type { SurfCondition, Currency } from './types';
+import type { SurfCondition, Currency, Eip1559Fees, BitcoinMempoolExtras } from './types';
 import { formatGwei, gasCostInToken, formatFiat, feeUnitLabel, costLabel } from './types';
 import { getPriceInCurrency } from './useTokenPrices';
 import { FeeAveragesDisplay } from './FeeAveragesDisplay';
@@ -16,6 +16,8 @@ interface SurfReportProps {
   prices: Record<string, Partial<Record<Currency, number>>>;
   currency: Currency;
   feeAverages?: FeeAverages;
+  eip1559?: Eip1559Fees;
+  bitcoinExtras?: BitcoinMempoolExtras;
   /** Extra classes on the outer wrapper (e.g. delight animation). */
   wrapperClassName?: string;
 }
@@ -29,6 +31,8 @@ export function SurfReport({
   currency,
   chainId,
   feeAverages,
+  eip1559,
+  bitcoinExtras,
   wrapperClassName = '',
 }: SurfReportProps) {
   const [copied, setCopied] = useState(false);
@@ -59,9 +63,9 @@ export function SurfReport({
       >
         {emoji}
       </div>
-      <h1 className="font-display text-5xl md:text-7xl tracking-widest text-slate-900 dark:text-white mb-2">
+      <h2 className="font-display text-5xl md:text-7xl tracking-widest text-slate-900 dark:text-white mb-2">
         {label}
-      </h1>
+      </h2>
       <p className="text-surf-600 dark:text-surf-200 text-lg md:text-xl mb-1">{sub}</p>
       <p className="text-surf-600 dark:text-surf-400/90 text-sm flex flex-wrap items-center justify-center gap-2">
         <span>
@@ -90,6 +94,34 @@ export function SurfReport({
         <p className="text-surf-600 dark:text-surf-300 text-base mt-2">
           {costLabel(chainId)} ≈ <span className="text-surf-700 dark:text-foam font-semibold">{formatFiat(costFiat, currency)}</span>
         </p>
+      )}
+      {eip1559 && chainId !== 0 && (
+        <p className="text-surf-600 dark:text-surf-400/90 text-xs mt-2 max-w-md mx-auto leading-relaxed">
+          {ti('eip1559Line', { base: formatGwei(eip1559.baseFeeGwei), tip: formatGwei(eip1559.priorityFeeGwei) })}
+        </p>
+      )}
+      {bitcoinExtras && chainId === 0 && (
+        <div className="text-surf-600 dark:text-surf-400/90 text-xs mt-2 space-y-0.5 max-w-md mx-auto">
+          {bitcoinExtras.economyFee != null && (
+            <p>{ti('btcEconomyLine', { fee: formatGwei(bitcoinExtras.economyFee) })}</p>
+          )}
+          {bitcoinExtras.minimumFee != null && (
+            <p>{ti('btcMinimumLine', { fee: formatGwei(bitcoinExtras.minimumFee) })}</p>
+          )}
+          {bitcoinExtras.fastestFee != null && (
+            <p>{ti('btcFastestLine', { fee: formatGwei(bitcoinExtras.fastestFee) })}</p>
+          )}
+          <p className="pt-1">
+            <a
+              href="https://mempool.space?utm_source=gassurfer"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline underline-offset-2 hover:text-slate-900 dark:hover:text-white"
+            >
+              {t('btcMempoolOpen')}
+            </a>
+          </p>
+        </div>
       )}
       {feeAverages && (
         <div className="mt-6 max-w-md mx-auto">

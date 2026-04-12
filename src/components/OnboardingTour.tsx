@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useI18n } from '../i18n/I18nContext';
+import { useFocusTrap } from '../hooks/useFocusTrap';
 
 interface OnboardingTourProps {
   open: boolean;
@@ -9,8 +10,10 @@ interface OnboardingTourProps {
 const STEP_COUNT = 4;
 
 export function OnboardingTour({ open, onDismiss }: OnboardingTourProps) {
+  const panelRef = useRef<HTMLDivElement>(null);
   const { t } = useI18n();
   const [step, setStep] = useState(0);
+  useFocusTrap(panelRef, open, step);
 
   if (!open) return null;
 
@@ -20,7 +23,10 @@ export function OnboardingTour({ open, onDismiss }: OnboardingTourProps) {
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="onboard-title">
-      <div className="w-full max-w-md rounded-2xl glass-strong border border-slate-200/50 dark:border-white/15 shadow-2xl p-6 md:p-8">
+      <div
+        ref={panelRef}
+        className="w-full max-w-md rounded-2xl glass-strong border border-slate-200/50 dark:border-white/15 shadow-2xl p-6 md:p-8"
+      >
         <p className="text-xs text-slate-500 dark:text-white/45 mb-2">
           {i + 1} / {STEP_COUNT}
         </p>

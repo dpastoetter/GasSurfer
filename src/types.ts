@@ -18,6 +18,19 @@ export interface GasTier {
   fast: number;
 }
 
+/** When present, fees use EIP-1559-style base + priority (EVM). */
+export type Eip1559Fees = {
+  baseFeeGwei: number;
+  priorityFeeGwei: number;
+};
+
+/** Extra tiers from mempool.space recommended fees (sat/vB). */
+export type BitcoinMempoolExtras = {
+  economyFee?: number;
+  minimumFee?: number;
+  fastestFee?: number;
+};
+
 export interface ChainGas {
   chainId: number;
   name: string;
@@ -27,6 +40,8 @@ export interface ChainGas {
   updatedAt: number;
   /** Human-readable data source (e.g. RPC hostname, mempool.space) */
   dataSource?: string;
+  eip1559?: Eip1559Fees;
+  bitcoinExtras?: BitcoinMempoolExtras;
 }
 
 /** Format gwei/sat per vB for display; uses more decimals for very small L2 values */

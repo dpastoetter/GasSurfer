@@ -13,6 +13,9 @@ export const MAX_SAMPLES = 20;
 /** Max chain IDs per GET /api/averages. */
 export const MAX_CHAIN_IDS = 20;
 
+/** Max chains per POST /api/ticks snapshot. */
+export const MAX_TICK_CHAINS = 32;
+
 /** Fee value: must be non-negative and below 1e12 (gwei/sat). */
 export const VALUE_MIN = 0;
 export const VALUE_MAX = 1e12;
@@ -52,4 +55,73 @@ export function validateChainIds(arr) {
     out.push(n);
   }
   return out.length > 0 ? out : null;
+}
+
+const CONDITION_SET = new Set(['surfs-up', 'smooth', 'choppy', 'storm']);
+
+/**
+ * Validate optional fee tick snapshot from the app. Returns normalized payload or null.
+ */
+export function validateTicksPayload(body) {
+  if (body == null || typeof body !== 'object') return null;
+  const stale = Boolean(body.stale);
+  const generatedAt =
+    typeof body.generatedAt === 'number' && Number.isFinite(body.generatedAt)
+      ? body.generatedAt
+      : Date.now();
+  const rawChains = Array.isArray(body.chains) ? body.chains : null;
+  if (!rawChains || rawChains.length === 0 || rawChains.length > MAX_TICK_CHAINS) return null;
+  const chains = [];
+  for (const c of rawChains) {
+    if (c == null || typeof c !== 'object') return null;
+    const chainId = typeof c.chainId === 'number' ? c.chainId : parseInt(c.chainId, 10);
+    if (!Number.isInteger(chainId) || !ALLOWED_CHAIN_IDS.has(chainId)) return null;
+    const gas = c.gas;
+    if (gas == null || typeof gas !== 'object') return null;
+    const slow = Number(gas.slow);
+    const standard = Number(gas.standard);
+    const fast = Number(gas.fast);
+    if (![slow, standard, fast].every((n) => Number.isFinite(n) && n >= VALUE_MIN && n <= VALUE_MAX)) return null;
+    const name = typeof c.name === 'string' && c.name.length <= 120 ? c.name : 'unknown';
+    const symbol = typeof c.symbol === 'string' && c.symbol.length <= 32 ? c.symbol : '';
+    const updatedAt =
+      typeof c.updatedAt === 'number' && Number.isFinite(c.updatedAt) ? c.updatedAt : generatedAt;
+    const condition =
+      typeof c.condition === 'string' && CONDITION_SET.has(c.condition) ? c.condition : 'smooth';
+    const dataSource =
+      c.dataSource == null
+        ? null
+        : typeof c.dataSource === 'string' && c.dataSource.length <= 200
+          ? c.dataSource
+          : null;
+    let eip1559 = null;
+    if (c.eip1559 != null && typeof c.eip1559 === 'object') {
+      const b = Number(c.eip1559.baseFeeGwei);
+      const p = Number(c.eip1559.priorityFeeGwei);
+      if (Number.isFinite(b) && Number.isFinite(p) && b >= 0 && p >= 0 && b <= VALUE_MAX && p <= VALUE_MAX) {
+        eip1559 = { baseFeeGwei: b, priorityFeeGwei: p };
+      }
+    }
+    let bitcoinExtras = null;
+    if (c.bitcoinExtras != null && typeof c.bitcoinExtras === 'object') {
+      const ex = {};
+      for (const k of ['economyFee', 'minimumFee', 'fastestFee']) {
+        const v = c.bitcoinExtras[k];
+        if (typeof v === 'number' && Number.isFinite(v) && v >= 0 && v <= VALUE_MAX) ex[k] = v;
+      }
+      if (Object.keys(ex).length > 0) bitcoinExtras = ex;
+    }
+    chains.push({
+      chainId,
+      name,
+      symbol,
+      gas: { slow, standard, fast },
+      updatedAt,
+      condition,
+      dataSource,
+      eip1559,
+      bitcoinExtras,
+    });
+  }
+  return { generatedAt, stale, chains };
 }

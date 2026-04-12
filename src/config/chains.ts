@@ -60,3 +60,10 @@ export const MEMPOOL_API = 'https://mempool.space/api/v1/fees/recommended';
 
 /** CoinGecko API base (no key required for simple/price). */
 export const COINGECKO_API_BASE = 'https://api.coingecko.com/api/v3/simple/price';
+
+/** Public RPC / fee API URLs for chain detail (read-only display). */
+export function getRpcUrlsForChain(chainId: number): readonly string[] {
+  if (chainId === 0) return [MEMPOOL_API];
+  const c = EVM_CHAINS.find((x) => x.chainId === chainId);
+  return c?.rpcUrls ?? [];
+}

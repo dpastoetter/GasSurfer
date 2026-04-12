@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { lazy, Suspense, useState, useMemo, useEffect, useCallback } from 'react';
 import { useGasPrices, getCoinGeckoId } from './useGasPrices';
 import { useTokenPrices, getPriceInCurrency } from './useTokenPrices';
 import { useFeeAverages } from './useFeeAverages';
@@ -15,19 +15,29 @@ import { EvmChainToolbar, type EvmSort } from './components/EvmChainToolbar';
 import { NetworkSummaryStrip } from './components/NetworkSummaryStrip';
 import { FeeAlertsPanel } from './components/FeeAlertsPanel';
 import { LocaleSelector } from './components/LocaleSelector';
-import { ComparePanel } from './components/ComparePanel';
 import { TxEstimatorPanel } from './components/TxEstimatorPanel';
-import { LearnDrawer } from './components/LearnDrawer';
-import { OnboardingTour } from './components/OnboardingTour';
 import { ShareSnapshotButton } from './components/ShareSnapshotButton';
-import { WeeklyRecapModal } from './components/WeeklyRecapModal';
+import { ChainDetailDrawer } from './components/ChainDetailDrawer';
+import { RefreshIntervalControl } from './components/RefreshIntervalControl';
 import { useUrlSync, readUrlParams } from './hooks/useUrlSync';
 import { useFavorites } from './hooks/useFavorites';
 import { useMultiChainSparkHistory } from './hooks/useMultiChainSparkHistory';
 import { useOnboarding } from './hooks/useOnboarding';
 import { useDelightSurfsUp } from './hooks/useDelightSurfsUp';
+import { useGasRefreshInterval } from './hooks/useGasRefreshInterval';
+import { useServerTickReporter } from './hooks/useServerTickReporter';
 import { useI18n } from './i18n/I18nContext';
 import { appendFeeTick } from './lib/feeSamplesDb';
+import { buildChainsSnapshotPayload } from './lib/snapshotJson';
+
+const OnboardingTour = lazy(() =>
+  import('./components/OnboardingTour').then((m) => ({ default: m.OnboardingTour }))
+);
+const LearnDrawer = lazy(() => import('./components/LearnDrawer').then((m) => ({ default: m.LearnDrawer })));
+const ComparePanel = lazy(() => import('./components/ComparePanel').then((m) => ({ default: m.ComparePanel })));
+const WeeklyRecapModal = lazy(() =>
+  import('./components/WeeklyRecapModal').then((m) => ({ default: m.WeeklyRecapModal }))
+);
 import type { Currency, SurfCondition } from './types';
 import { feeUnitLabel, isFeaturedChain, gasCostInToken } from './types';
 
@@ -54,7 +64,8 @@ function loadTheme(): Theme {
 function App() {
   const { t, ti, locale } = useI18n();
   const [urlSnap] = useState(() => readUrlParams());
-  const { chains, loading, error, stale, refetch } = useGasPrices(12_000);
+  const { refreshIntervalMs, setRefreshIntervalMs } = useGasRefreshInterval();
+  const { chains, loading, errorKey, stale, refetch } = useGasPrices(refreshIntervalMs);
   const { prices } = useTokenPrices(60_000);
   const feeAverages = useFeeAverages(chains);
   const [selectedChainId, setSelectedChainId] = useState<number>(() => urlSnap.chainId ?? 1);
@@ -68,7 +79,20 @@ function App() {
   const [compareOpen, setCompareOpen] = useState(false);
   const [learnOpen, setLearnOpen] = useState(false);
   const [weeklyOpen, setWeeklyOpen] = useState(false);
+  const [detailChainId, setDetailChainId] = useState<number | null>(null);
+  const [jsonCopied, setJsonCopied] = useState(false);
   const { onboardingOpen, dismissOnboarding, reopenOnboarding, tourKey } = useOnboarding();
+
+  const onCopyJsonSnapshot = useCallback(async () => {
+    if (chains.length === 0) return;
+    try {
+      await navigator.clipboard.writeText(JSON.stringify(buildChainsSnapshotPayload(chains, stale), null, 2));
+      setJsonCopied(true);
+      window.setTimeout(() => setJsonCopied(false), 2000);
+    } catch {
+      /* ignore */
+    }
+  }, [chains, stale]);
 
   const effectiveChainId = useMemo(() => {
     if (chains.length === 0) return selectedChainId;
@@ -130,6 +154,9 @@ function App() {
     [chains]
   );
 
+  const serverTickFingerprint = useMemo(() => `${chainsFingerprint}|${stale}`, [chainsFingerprint, stale]);
+  useServerTickReporter(chains, stale, serverTickFingerprint);
+
   useEffect(() => {
     if (chains.length === 0) return;
     void appendFeeTick(chains, stale);
@@ -152,19 +179,29 @@ function App() {
       </p>
     ) : null;
 
+  const detailChain =
+    detailChainId != null ? (chains.find((c) => c.chainId === detailChainId) ?? null) : null;
+
   return (
     <div className="min-h-screen wave-bg text-slate-800 dark:text-white font-sans transition-colors duration-300">
-      <OnboardingTour key={tourKey} open={onboardingOpen} onDismiss={dismissOnboarding} />
-      <LearnDrawer open={learnOpen} onClose={() => setLearnOpen(false)} />
-      <ComparePanel
-        open={compareOpen}
-        onClose={() => setCompareOpen(false)}
-        chains={chains}
-        compareIds={compareIds}
-        prices={prices}
-        currency={currency}
+      <Suspense fallback={null}>
+        <OnboardingTour key={tourKey} open={onboardingOpen} onDismiss={dismissOnboarding} />
+        <LearnDrawer open={learnOpen} onClose={() => setLearnOpen(false)} />
+        <ComparePanel
+          open={compareOpen}
+          onClose={() => setCompareOpen(false)}
+          chains={chains}
+          compareIds={compareIds}
+          prices={prices}
+          currency={currency}
+        />
+        <WeeklyRecapModal open={weeklyOpen} onClose={() => setWeeklyOpen(false)} />
+      </Suspense>
+      <ChainDetailDrawer
+        chain={detailChain}
+        open={detailChain != null}
+        onClose={() => setDetailChainId(null)}
       />
-      <WeeklyRecapModal open={weeklyOpen} onClose={() => setWeeklyOpen(false)} />
 
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
         <div className="absolute bottom-0 left-0 right-0 h-48 wave-overlay" />
@@ -178,7 +215,7 @@ function App() {
         />
       </div>
 
-      <div className="relative z-10 max-w-6xl mx-auto px-4 py-8 md:py-12">
+      <main id="main-content" className="relative z-10 max-w-6xl mx-auto px-4 py-8 md:py-12">
         <header className="text-center mb-10 md:mb-14">
           <h1 className="font-display text-6xl md:text-8xl tracking-[0.2em] text-slate-800 dark:text-white drop-shadow-lg mb-2">
             {t('appTitle')}
@@ -188,6 +225,7 @@ function App() {
             <ThemeToggle theme={theme} onToggle={() => setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'))} />
             <LocaleSelector />
             <CurrencySelector value={currency} onChange={setCurrency} />
+            <RefreshIntervalControl value={refreshIntervalMs} onChange={setRefreshIntervalMs} />
             <button
               type="button"
               onClick={() => setLearnOpen(true)}
@@ -218,6 +256,15 @@ function App() {
             </button>
             {!loading && chains.length > 0 && (
               <ShareSnapshotButton chain={primary} coinGeckoId={getCoinGeckoId(primary?.chainId ?? 1)} prices={prices} currency={currency} />
+            )}
+            {!loading && chains.length > 0 && (
+              <button
+                type="button"
+                onClick={() => void onCopyJsonSnapshot()}
+                className="rounded-xl glass border border-slate-300/50 dark:border-white/20 px-3 py-2.5 text-sm font-medium text-slate-600 dark:text-surf-200 hover:bg-slate-200/50 dark:hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-surf-400/50"
+              >
+                {jsonCopied ? `✓ ${t('copyJsonDone')}` : t('copyJson')}
+              </button>
             )}
             {!loading && chains.length > 0 && (
               <>
@@ -254,9 +301,11 @@ function App() {
             <p className="text-surf-600 dark:text-surf-400/80 text-sm text-center mb-6">{t('loadingGas')}</p>
             <PageSkeletons />
           </div>
-        ) : error && chains.length === 0 ? (
+        ) : errorKey && chains.length === 0 ? (
           <div className="text-center py-24" role="alert" aria-live="assertive">
-            <p className="text-red-600 dark:text-red-300 mb-4">{error}</p>
+            <p className="text-red-600 dark:text-red-300 mb-4">
+              {errorKey === 'errorRefreshGas' ? t('errorRefreshGas') : t('errorLoadGas')}
+            </p>
             <button
               type="button"
               onClick={refetch}
@@ -286,6 +335,8 @@ function App() {
                     prices={prices}
                     currency={currency}
                     feeAverages={feeAverages[primary.chainId]}
+                    eip1559={primary.eip1559}
+                    bitcoinExtras={primary.bitcoinExtras}
                     wrapperClassName={delightBurst ? 'surfs-up-burst' : ''}
                   />
                 )}
@@ -310,6 +361,7 @@ function App() {
                   onToggleFavorite={toggleFavorite}
                   compareIds={compareIds}
                   onToggleCompare={toggleCompare}
+                  onOpenDetail={setDetailChainId}
                 />
                 <FeaturedChainWidget
                   chain={ethereum ?? null}
@@ -326,6 +378,7 @@ function App() {
                   onToggleFavorite={toggleFavorite}
                   compareIds={compareIds}
                   onToggleCompare={toggleCompare}
+                  onOpenDetail={setDetailChainId}
                 />
               </div>
               <h2 className="font-display text-2xl tracking-wider text-surf-700 dark:text-surf-200 mb-4">{t('evmChains')}</h2>
@@ -348,6 +401,7 @@ function App() {
                     compareSelected={compareIds.includes(chain.chainId)}
                     compareDisabled={compareIds.length >= 3}
                     onToggleCompare={() => toggleCompare(chain.chainId)}
+                    onOpenDetail={() => setDetailChainId(chain.chainId)}
                   />
                 ))}
               </div>
@@ -373,7 +427,7 @@ function App() {
             </footer>
           </div>
         )}
-      </div>
+      </main>
     </div>
   );
 }

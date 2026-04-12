@@ -34,7 +34,7 @@ export function TxEstimatorPanel({ chain, coinGeckoId, prices, currency }: TxEst
 
   return (
     <div className="rounded-2xl glass border border-slate-200/50 dark:border-white/10 p-4 mb-6 text-sm">
-      <h3 className="font-display text-lg tracking-wide text-slate-800 dark:text-white mb-2">{t('txEstimatorTitle')}</h3>
+      <h2 className="font-display text-lg tracking-wide text-slate-800 dark:text-white mb-2">{t('txEstimatorTitle')}</h2>
       <p className="text-slate-500 dark:text-white/45 text-xs mb-3">{t('txEstimatorHint')}</p>
       <div className="flex flex-wrap gap-2 mb-3">
         {PRESETS.map((p) => (

@@ -14,6 +14,7 @@ export function LocaleSelector() {
       >
         <option value="en">{t('langEn')}</option>
         <option value="de">{t('langDe')}</option>
+        <option value="es">{t('langEs')}</option>
       </select>
     </label>
   );

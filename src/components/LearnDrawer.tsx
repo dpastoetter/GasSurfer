@@ -1,4 +1,6 @@
+import { useRef } from 'react';
 import { useI18n } from '../i18n/I18nContext';
+import { useFocusTrap } from '../hooks/useFocusTrap';
 
 interface LearnDrawerProps {
   open: boolean;
@@ -6,6 +8,8 @@ interface LearnDrawerProps {
 }
 
 export function LearnDrawer({ open, onClose }: LearnDrawerProps) {
+  const panelRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(panelRef, open);
   const { t } = useI18n();
   if (!open) return null;
 
@@ -18,6 +22,7 @@ export function LearnDrawer({ open, onClose }: LearnDrawerProps) {
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
       <div
+        ref={panelRef}
         className="w-full max-w-md h-full overflow-y-auto glass-strong border-l border-slate-200/50 dark:border-white/15 shadow-2xl p-5 md:p-6"
         onClick={(e) => e.stopPropagation()}
       >

@@ -57,3 +57,21 @@ export const averagesRateLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
 });
+
+/** Rate limit for POST /api/ticks (write). */
+export const ticksRateLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 45,
+  message: { error: 'Too many requests' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+/** Rate limit for GET snapshot JSON. */
+export const snapshotRateLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 180,
+  message: { error: 'Too many requests' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});

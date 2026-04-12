@@ -7,7 +7,7 @@ const LOCALE_KEY = 'gas-surfer-locale';
 function loadLocale(): Locale {
   try {
     const s = localStorage.getItem(LOCALE_KEY);
-    if (s === 'de' || s === 'en') return s;
+    if (s === 'de' || s === 'en' || s === 'es') return s;
   } catch {
     /* ignore */
   }
@@ -32,7 +32,7 @@ export function I18nProvider({
   initialLocale?: Locale | null;
 }) {
   const [locale, setLocaleState] = useState<Locale>(() => {
-    if (initialLocale === 'en' || initialLocale === 'de') return initialLocale;
+    if (initialLocale === 'en' || initialLocale === 'de' || initialLocale === 'es') return initialLocale;
     return loadLocale();
   });
 
@@ -43,11 +43,11 @@ export function I18nProvider({
     } catch {
       /* ignore */
     }
-    document.documentElement.lang = l === 'de' ? 'de' : 'en';
+    document.documentElement.lang = l === 'de' ? 'de' : l === 'es' ? 'es' : 'en';
   }, []);
 
   useEffect(() => {
-    document.documentElement.lang = locale === 'de' ? 'de' : 'en';
+    document.documentElement.lang = locale === 'de' ? 'de' : locale === 'es' ? 'es' : 'en';
   }, [locale]);
 
   const t = useCallback(

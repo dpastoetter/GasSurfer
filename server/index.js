@@ -5,15 +5,17 @@
  */
 
 import express from 'express';
-import { upsertSamples, getAllAverages } from './db.js';
+import { upsertSamples, getAllAverages, insertFeeTick, getLatestSnapshotJson } from './db.js';
 import {
   securityHeaders,
   corsOptions,
   BODY_LIMIT,
   samplesRateLimiter,
   averagesRateLimiter,
+  ticksRateLimiter,
+  snapshotRateLimiter,
 } from './middleware.js';
-import { validateSample, validateChainIds, MAX_SAMPLES } from './security.js';
+import { validateSample, validateChainIds, validateTicksPayload, MAX_SAMPLES } from './security.js';
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3001;
@@ -83,6 +85,47 @@ app.get(
     }
   }
 );
+
+app.post(
+  '/api/ticks',
+  ticksRateLimiter,
+  async (req, res) => {
+    try {
+      const body = req.body;
+      const normalized = validateTicksPayload(body);
+      if (!normalized) {
+        return res.status(400).json({ error: 'Invalid ticks payload' });
+      }
+      const jsonStr = JSON.stringify(normalized);
+      if (jsonStr.length > 512_000) {
+        return res.status(400).json({ error: 'Payload too large' });
+      }
+      await insertFeeTick(jsonStr);
+      return res.json({ ok: true });
+    } catch (err) {
+      console.error('POST /api/ticks', err);
+      return res.status(500).json({ error: 'Failed to store tick' });
+    }
+  }
+);
+
+async function handleSnapshot(_req, res) {
+  try {
+    const raw = await getLatestSnapshotJson();
+    if (raw == null) {
+      return res.status(404).json({ error: 'No snapshot yet' });
+    }
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.setHeader('Cache-Control', 'public, max-age=5');
+    return res.send(raw);
+  } catch (err) {
+    console.error('GET snapshot', err);
+    return res.status(500).json({ error: 'Failed to read snapshot' });
+  }
+}
+
+app.get('/api/v1/snapshot.json', snapshotRateLimiter, handleSnapshot);
+app.get('/api/snapshot.json', snapshotRateLimiter, handleSnapshot);
 
 app.use((_req, res) => {
   res.status(404).json({ error: 'Not found' });

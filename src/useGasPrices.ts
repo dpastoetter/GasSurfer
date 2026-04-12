@@ -6,9 +6,18 @@ import { EVM_CHAINS, MEMPOOL_API } from './config/chains';
 const EVM_BATCH_SIZE = 4;
 const EVM_BATCH_DELAY_MS = 100;
 
+/** Chains where we try `eth_getBlockByNumber` + `eth_maxPriorityFeePerGas` before legacy gas price. */
+const EIP1559_CHAIN_IDS = new Set([
+  1, 137, 8453, 42161, 10, 59144, 324, 5000, 100, 56, 250, 43114, 42220,
+]);
+
+export type GasPriceErrorKey = 'errorLoadGas' | 'errorRefreshGas' | null;
+
 function getCondition(standardFee: number, chainId: number): SurfCondition {
   if (chainId === BITCOIN_CHAIN_ID) {
-    const low = 5, mid = 15, high = 50;
+    const low = 5,
+      mid = 15,
+      high = 50;
     if (standardFee <= low) return 'surfs-up';
     if (standardFee <= mid) return 'smooth';
     if (standardFee <= high) return 'choppy';
@@ -42,6 +51,48 @@ function rpcHostname(rpcUrl: string): string {
   }
 }
 
+function roundTier(n: number): number {
+  return n >= 1 ? Math.round(n) : Math.round(n * 100) / 100;
+}
+
+async function jsonRpc(rpcUrl: string, method: string, params: unknown[]): Promise<{ result?: unknown; error?: unknown }> {
+  try {
+    const res = await fetch(rpcUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ jsonrpc: '2.0', method, params, id: 1 }),
+    });
+    return (await res.json()) as { result?: unknown; error?: unknown };
+  } catch {
+    return { error: 'network' };
+  }
+}
+
+/** Base fee + suggested priority tip; effective used as “standard” tier. */
+async function fetchEip1559Fees(rpcUrl: string): Promise<{ baseFeeGwei: number; priorityFeeGwei: number; effectiveGwei: number } | null> {
+  const blockRes = await jsonRpc(rpcUrl, 'eth_getBlockByNumber', ['latest', false]);
+  if (blockRes.error) return null;
+  const block = blockRes.result as { baseFeePerGas?: string } | null;
+  const baseHex = block?.baseFeePerGas;
+  if (!baseHex) return null;
+  const base = weiToGwei(baseHex);
+  if (!Number.isFinite(base) || base < 0) return null;
+
+  let priority = 1.5;
+  const tipRes = await jsonRpc(rpcUrl, 'eth_maxPriorityFeePerGas', []);
+  if (!tipRes.error && tipRes.result != null) {
+    const p = weiToGwei(tipRes.result as string | number);
+    if (Number.isFinite(p) && p > 0) priority = p;
+  }
+
+  const effective = base + priority;
+  return {
+    baseFeeGwei: roundTier(base),
+    priorityFeeGwei: roundTier(priority),
+    effectiveGwei: roundTier(effective),
+  };
+}
+
 async function fetchGasFromRpc(rpcUrl: string): Promise<number | null> {
   try {
     const res = await fetch(rpcUrl, {
@@ -71,13 +122,40 @@ async function fetchGasFromRpc(rpcUrl: string): Promise<number | null> {
 
 async function fetchChainGas(chain: (typeof EVM_CHAINS)[number]): Promise<ChainGas | null> {
   for (let i = 0; i < chain.rpcUrls.length; i++) {
-    const gwei = await fetchGasFromRpc(chain.rpcUrls[i]);
+    const rpcUrl = chain.rpcUrls[i];
+    const host = rpcHostname(rpcUrl);
+
+    if (EIP1559_CHAIN_IDS.has(chain.chainId)) {
+      const e1559 = await fetchEip1559Fees(rpcUrl);
+      if (e1559 != null && e1559.effectiveGwei > 0 && e1559.effectiveGwei < 1e6) {
+        const g = e1559.effectiveGwei;
+        const gas: GasTier = {
+          slow: roundTier(Math.max(0.001, g * 0.9)),
+          standard: roundTier(g),
+          fast: roundTier(g * 1.1),
+        };
+        return {
+          chainId: chain.chainId,
+          name: chain.name,
+          symbol: chain.symbol,
+          gas,
+          condition: getCondition(gas.standard, chain.chainId),
+          updatedAt: Date.now(),
+          dataSource: host,
+          eip1559: {
+            baseFeeGwei: e1559.baseFeeGwei,
+            priorityFeeGwei: e1559.priorityFeeGwei,
+          },
+        };
+      }
+    }
+
+    const gwei = await fetchGasFromRpc(rpcUrl);
     if (gwei != null && gwei > 0 && gwei < 1e6) {
-      const round = (n: number) => (n >= 1 ? Math.round(n) : Math.round(n * 100) / 100);
       const gas: GasTier = {
-        slow: round(Math.max(0.001, gwei * 0.9)),
-        standard: round(gwei),
-        fast: round(gwei * 1.1),
+        slow: roundTier(Math.max(0.001, gwei * 0.9)),
+        standard: roundTier(gwei),
+        fast: roundTier(gwei * 1.1),
       };
       return {
         chainId: chain.chainId,
@@ -86,7 +164,7 @@ async function fetchChainGas(chain: (typeof EVM_CHAINS)[number]): Promise<ChainG
         gas,
         condition: getCondition(gas.standard, chain.chainId),
         updatedAt: Date.now(),
-        dataSource: rpcHostname(chain.rpcUrls[i]),
+        dataSource: host,
       };
     }
   }
@@ -116,16 +194,23 @@ function toNum(v: unknown): number {
 async function fetchBitcoinFees(): Promise<ChainGas | null> {
   try {
     const res = await fetch(MEMPOOL_API);
-    const data = await res.json();
+    const data = (await res.json()) as Record<string, unknown>;
     const hourFee = toNum(data.hourFee ?? data.minimumFee ?? 1);
     const halfHourFee = toNum(data.halfHourFee ?? data.hourFee ?? 1);
     const fastestFee = toNum(data.fastestFee ?? data.halfHourFee ?? 1);
+    const economyFee = toNum(data.economyFee);
+    const minimumFee = toNum(data.minimumFee);
     const slowVal = Number.isFinite(hourFee) ? Math.round(hourFee) : 1;
     let stdVal = Number.isFinite(halfHourFee) ? Math.round(halfHourFee) : slowVal;
     let fastVal = Number.isFinite(fastestFee) ? Math.round(fastestFee) : stdVal;
     if (slowVal > stdVal) stdVal = slowVal;
     if (stdVal > fastVal) fastVal = stdVal;
     const gas: GasTier = { slow: slowVal, standard: stdVal, fast: fastVal };
+    const bitcoinExtras: ChainGas['bitcoinExtras'] = {};
+    if (Number.isFinite(economyFee) && economyFee > 0) bitcoinExtras.economyFee = Math.round(economyFee);
+    if (Number.isFinite(minimumFee) && minimumFee > 0) bitcoinExtras.minimumFee = Math.round(minimumFee);
+    if (Number.isFinite(fastestFee) && fastestFee > 0) bitcoinExtras.fastestFee = Math.round(fastestFee);
+    const hasExtras = Object.keys(bitcoinExtras).length > 0;
     return {
       chainId: BITCOIN_CHAIN_ID,
       name: 'Bitcoin',
@@ -134,21 +219,22 @@ async function fetchBitcoinFees(): Promise<ChainGas | null> {
       condition: getCondition(gas.standard, BITCOIN_CHAIN_ID),
       updatedAt: Date.now(),
       dataSource: 'mempool.space',
+      bitcoinExtras: hasExtras ? bitcoinExtras : undefined,
     };
   } catch {
     return null;
   }
 }
 
-export function useGasPrices(refreshIntervalMs = 12_000) {
+export function useGasPrices(refreshIntervalMs: number) {
   const [chains, setChains] = useState<ChainGas[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [errorKey, setErrorKey] = useState<GasPriceErrorKey>(null);
   const [stale, setStale] = useState(false);
   const lastGoodRef = useRef<ChainGas[]>([]);
 
   const fetchAll = useCallback(async () => {
-    setError(null);
+    setErrorKey(null);
     try {
       const [evmResults, btc] = await Promise.all([fetchAllEvmStaggered(), fetchBitcoinFees()]);
       const valid = evmResults.filter((r): r is ChainGas => r !== null);
@@ -158,36 +244,37 @@ export function useGasPrices(refreshIntervalMs = 12_000) {
         lastGoodRef.current = valid;
         setStale(false);
         setChains(valid);
-        setError(null);
+        setErrorKey(null);
       } else if (lastGoodRef.current.length > 0) {
         setChains(lastGoodRef.current);
         setStale(true);
-        setError('Could not refresh gas prices');
+        setErrorKey('errorRefreshGas');
       } else {
         setChains([]);
         setStale(false);
-        setError('Could not load gas prices');
+        setErrorKey('errorLoadGas');
       }
     } catch {
       if (lastGoodRef.current.length > 0) {
         setChains(lastGoodRef.current);
         setStale(true);
-        setError('Could not refresh gas prices');
+        setErrorKey('errorRefreshGas');
       } else {
         setChains([]);
-        setError('Could not load gas prices');
+        setErrorKey('errorLoadGas');
       }
     }
     setLoading(false);
   }, []);
 
   useEffect(() => {
-    const id = setInterval(fetchAll, refreshIntervalMs);
     queueMicrotask(() => fetchAll());
+    if (refreshIntervalMs <= 0) return;
+    const id = setInterval(fetchAll, refreshIntervalMs);
     return () => clearInterval(id);
   }, [fetchAll, refreshIntervalMs]);
 
-  return { chains, loading, error, stale, refetch: fetchAll };
+  return { chains, loading, errorKey, stale, refetch: fetchAll };
 }
 
 export const CHAIN_COINGECKO_IDS: Record<number, string> = {
