@@ -92,7 +92,12 @@ export function ComparePanel({ open, onClose, chains, compareIds, prices, curren
                         )}
                       </td>
                       <td className="py-2 align-top">
-                        <DataFreshness key={`${c.chainId}-${c.updatedAt}`} updatedAt={c.updatedAt} dataSource={c.dataSource} />
+                        <DataFreshness
+                          key={`${c.chainId}-${c.updatedAt}`}
+                          updatedAt={c.updatedAt}
+                          dataSource={c.dataSource}
+                          fetchMeta={c.fetchMeta}
+                        />
                       </td>
                     </tr>
                   );

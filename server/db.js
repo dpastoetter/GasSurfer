@@ -166,6 +166,24 @@ export async function getLatestSnapshotJson() {
   return typeof row.payload === 'string' ? row.payload : null;
 }
 
+/**
+ * Recent fee tick rows (oldest first) for chart blending.
+ * @param {number} limit - max rows (clamped by caller)
+ * @returns {Promise<{ id: number, created_at: number, payload: string }[]>}
+ */
+export async function getRecentFeeTicks(limit) {
+  const d = await getDb();
+  const lim = Math.max(1, Math.min(Number(limit) || 60, 120));
+  const stmt = d.prepare(
+    `SELECT id, created_at, payload FROM fee_ticks ORDER BY id DESC LIMIT ?`
+  );
+  stmt.bind([lim]);
+  const rows = [];
+  while (stmt.step()) rows.push(stmt.getAsObject());
+  stmt.free();
+  return rows.reverse();
+}
+
 export function close() {
   if (db) {
     db.close();

@@ -39,16 +39,32 @@ export function LearnDrawer({ open, onClose }: LearnDrawerProps) {
           </button>
         </div>
         <section className="mb-5">
+          <h3 className="text-sm font-semibold text-slate-800 dark:text-white mb-1">{t('learnStandardTitle')}</h3>
+          <p className="text-sm text-slate-600 dark:text-surf-300/90 leading-relaxed">{t('learnStandardBody')}</p>
+        </section>
+        <section className="mb-5">
           <h3 className="text-sm font-semibold text-slate-800 dark:text-white mb-1">{t('learnGweiTitle')}</h3>
           <p className="text-sm text-slate-600 dark:text-surf-300/90 leading-relaxed">{t('learnGweiBody')}</p>
+        </section>
+        <section className="mb-5">
+          <h3 className="text-sm font-semibold text-slate-800 dark:text-white mb-1">{t('learnFeeSemanticsTitle')}</h3>
+          <p className="text-sm text-slate-600 dark:text-surf-300/90 leading-relaxed">{t('learnFeeSemanticsBody')}</p>
         </section>
         <section className="mb-5">
           <h3 className="text-sm font-semibold text-slate-800 dark:text-white mb-1">{t('learnL2Title')}</h3>
           <p className="text-sm text-slate-600 dark:text-surf-300/90 leading-relaxed">{t('learnL2Body')}</p>
         </section>
-        <section>
+        <section className="mb-5">
           <h3 className="text-sm font-semibold text-slate-800 dark:text-white mb-1">{t('learnBtcTitle')}</h3>
           <p className="text-sm text-slate-600 dark:text-surf-300/90 leading-relaxed">{t('learnBtcBody')}</p>
+        </section>
+        <section className="mb-5">
+          <h3 className="text-sm font-semibold text-slate-800 dark:text-white mb-1">{t('learnBtcTiersTitle')}</h3>
+          <p className="text-sm text-slate-600 dark:text-surf-300/90 leading-relaxed">{t('learnBtcTiersBody')}</p>
+        </section>
+        <section>
+          <h3 className="text-sm font-semibold text-slate-800 dark:text-white mb-1">{t('learnBridgeTitle')}</h3>
+          <p className="text-sm text-slate-600 dark:text-surf-300/90 leading-relaxed">{t('learnBridgeBody')}</p>
         </section>
       </div>
     </div>

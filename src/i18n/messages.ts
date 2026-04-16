@@ -9,6 +9,8 @@ const en = {
   evmChains: 'EVM chains',
   recentTrend: 'Recent trend',
   footerNote: 'Configurable gas refresh · Token prices ~1min · Public RPC + CoinGecko',
+  footerBridgeNote:
+    'Withdrawing or bridging to L1 can still cost high L1 fees even when an L2 looks cheap.',
   refresh: 'Refresh',
   refreshTitle: 'Refresh gas prices now',
   lastUpdated: 'Updated {time}',
@@ -70,7 +72,9 @@ const en = {
   alertsPrivacy: 'Alerts run in your browser only; no server stores your thresholds.',
   alertsGranted: 'Notifications enabled',
   alertsDenied: 'Notifications blocked — enable in browser settings',
-  staleData: 'Showing last good data — refresh failed',
+  staleData: 'Could not refresh live fees — showing cached readings from this tab',
+  staleDataSub:
+    'You are still online; the last check to public RPCs or fee APIs failed. Use refresh or wait for the next interval.',
   surfReportRegion: 'Surf report for selected chain',
   chainCardLabel: '{name}, {condition}, standard {fee} {unit}',
   bitcoinTitle: 'Bitcoin',
@@ -106,6 +110,19 @@ const en = {
   learnBtcTitle: 'Bitcoin fees (sat/vB)',
   learnBtcBody:
     'Bitcoin blocks target a virtual byte (“vB”) size. Fees are satoshis per vB. Bigger or more complex transactions need more vBytes, so total cost = rate × size.',
+  learnStandardTitle: 'What “Standard” means here',
+  learnStandardBody:
+    'Standard is the middle tier we show for the selected chain: for Bitcoin it follows mempool.space “half hour” style urgency; for EVM chains it is either the EIP-1559 effective price (base fee + a typical priority tip) when available, or the legacy eth_gasPrice result otherwise. Slow and Fast are simple multipliers around that middle reading—not a wallet quote.',
+  learnFeeSemanticsTitle: 'Reading fees on EVM vs Bitcoin',
+  learnFeeSemanticsBody:
+    'On EIP-1559 networks, “standard” uses an effective gwei estimate (base + priority). Legacy-only paths use gasPrice. L2 numbers are still gwei—they are usually tiny because execution is cheap, not because the unit changed. Bitcoin uses sat/vB from mempool.space recommended tiers.',
+  learnBtcTiersTitle: 'Bitcoin Slow / Standard / Fast',
+  learnBtcTiersBody:
+    'Slow maps to the roughly one-hour target, Standard to about thirty minutes, and Fast toward next-block style urgency from mempool.space recommended fees. Exact fields follow their API (hourFee, halfHourFee, fastestFee).',
+  learnBridgeTitle: 'L2 cheap gas vs moving money out',
+  learnBridgeBody:
+    'Rollups can make transactions on L2 very cheap, but bridging or withdrawing often touches Ethereum L1. When L1 is congested, that step can still be expensive even if the L2 headline looks calm.',
+  standardLearnLink: 'What does Standard mean?',
   dataFreshLine: 'Updated {age} · {source}',
   onboardStep1Title: 'Welcome to Gas Surfer',
   onboardStep1Body:
@@ -163,6 +180,32 @@ const en = {
   refresh30s: 'Every 30s',
   copyJson: 'Copy JSON snapshot',
   copyJsonDone: 'Snapshot copied',
+  rpcMetaShort: 'via {host} · {n} RPC attempt(s)',
+  rpcDetailLine: 'This reading used endpoint #{n} ({host}).',
+  chainDetailFetchMeta: 'RPC: {n} attempt(s) before success · {host}',
+  chainDetailRpcLatency: 'Approx. RPC round-trip this update: {ms} ms',
+  chainDetailRpcActive: 'Used for this update',
+  offlineBanner: 'Offline — showing last snapshot saved in this browser ({time}).',
+  offlineShowCache: 'Use saved snapshot',
+  offlineUseLive: 'Use live data',
+  offlineCachedNote: 'Saved only in this browser when refresh succeeds.',
+  chartBlendsServer: 'Trend may include recent values from the optional API.',
+  alertsRegimeLegend: 'Surf condition changes',
+  alertsRegimeImprove: 'Notify when surf conditions improve (toward calmer / cheaper)',
+  alertsRegimeWorsen: 'Notify when surf conditions worsen (toward stormier)',
+  alertsNotifyRegimeBody: '{name}: {fromLabel} → {toLabel} ({fee} {unit})',
+  surfBandsAdvancedToggle: 'Advanced: custom surf bands',
+  surfBandsHint:
+    'Optional per-chain thresholds (stored only in this browser) for Surf’s up / Smooth / Choppy / Storm. Use the same numeric unit as the dashboard (gwei or sat/vB). Values must increase: low ≤ mid ≤ high.',
+  surfBandsChain: 'Chain',
+  surfBandsLow: 'Low (Surf’s up cap)',
+  surfBandsMid: 'Mid (Smooth cap)',
+  surfBandsHigh: 'High (Choppy cap)',
+  surfBandsSave: 'Save for this chain',
+  surfBandsResetChain: 'Clear this chain',
+  surfBandsResetAll: 'Clear all overrides',
+  surfBandsPreview: 'Preview condition at current standard',
+  surfBandsPlaceholder: 'e.g. 20',
 } as const;
 
 const de = {
@@ -172,6 +215,8 @@ const de = {
   evmChains: 'EVM-Netzwerke',
   recentTrend: 'Letzter Verlauf',
   footerNote: 'Einstellbare Gas-Aktualisierung · Token-Kurse ca. jede Minute · Öffentliche RPC + CoinGecko',
+  footerBridgeNote:
+    'Brücken oder Auszahlungen auf L1 können teuer sein, selbst wenn L2-Gas günstig wirkt.',
   refresh: 'Aktualisieren',
   refreshTitle: 'Gaspreise jetzt aktualisieren',
   lastUpdated: 'Stand: {time}',
@@ -233,7 +278,9 @@ const de = {
   alertsPrivacy: 'Nur in deinem Browser; kein Server speichert Schwellen.',
   alertsGranted: 'Benachrichtigungen aktiv',
   alertsDenied: 'Benachrichtigungen blockiert — in den Browsereinstellungen erlauben',
-  staleData: 'Letzte gültige Daten — Aktualisierung fehlgeschlagen',
+  staleData: 'Live-Aktualisierung fehlgeschlagen — es werden zwischengespeicherte Werte aus diesem Tab gezeigt',
+  staleDataSub:
+    'Du bist online; der letzte Abruf bei öffentlichen RPCs oder Gebühren-APIs ist fehlgeschlagen. Aktualisieren oder auf das nächste Intervall warten.',
   surfReportRegion: 'Surf-Report für gewähltes Netz',
   chainCardLabel: '{name}, {condition}, Standard {fee} {unit}',
   bitcoinTitle: 'Bitcoin',
@@ -269,6 +316,19 @@ const de = {
   learnBtcTitle: 'Bitcoin (sat/vB)',
   learnBtcBody:
     'Blöcke zielen auf eine virtuelle Größe in vByte. Gebühren sind Satoshis pro vB. Größere Transaktionen brauchen mehr vBytes, also Kosten = Satz × Größe.',
+  learnStandardTitle: 'Was „Standard“ hier bedeutet',
+  learnStandardBody:
+    'Standard ist die mittlere Stufe für die gewählte Kette: Bei Bitcoin orientiert sie sich an mempool.space („ca. 30 Minuten“). Bei EVM-Netzen ist es entweder der EIP-1559-effektive Preis (Basis + typische Priorität), falls verfügbar, sonst eth_gasPrice. Langsam/Schnell sind einfache Faktoren um diese Mitte—keine Wallet-Genauprognose.',
+  learnFeeSemanticsTitle: 'Gebühren auf EVM vs. Bitcoin',
+  learnFeeSemanticsBody:
+    'Bei EIP-1559 nutzt „Standard“ einen effektiven Gwei-Wert (Basis + Priorität). Legacy-Pfade nutzen gasPrice. L2-Werte sind weiterhin Gwei—oft winzig, weil die Ausführung günstig ist. Bitcoin nutzt sat/vB aus mempool.space-Empfehlungen.',
+  learnBtcTiersTitle: 'Bitcoin Langsam / Standard / Schnell',
+  learnBtcTiersBody:
+    'Langsam entspricht grob der „eine Stunde“-Zielstufe, Standard etwa 30 Minuten, Schnell eher nächster Block—basierend auf hourFee, halfHourFee und fastestFee der mempool.space-API.',
+  learnBridgeTitle: 'Günstiges L2-Gas vs. Geld rausbewegen',
+  learnBridgeBody:
+    'Rollups können L2-Transaktionen sehr günstig machen, aber Brücken oder Auszahlungen berühren oft Ethereum L1. Wenn L1 voll ist, kann dieser Schritt teuer bleiben, auch wenn L2 ruhig wirkt.',
+  standardLearnLink: 'Was bedeutet Standard?',
   dataFreshLine: 'Aktualisiert {age} · {source}',
   onboardStep1Title: 'Willkommen bei Gas Surfer',
   onboardStep1Body:
@@ -326,6 +386,32 @@ const de = {
   refresh30s: 'Alle 30s',
   copyJson: 'JSON-Snapshot kopieren',
   copyJsonDone: 'Snapshot kopiert',
+  rpcMetaShort: '{host} · {n} RPC-Versuch(e)',
+  rpcDetailLine: 'Messung über Endpunkt #{n} ({host}).',
+  chainDetailFetchMeta: 'RPC: {n} Versuch(e) bis Erfolg · {host}',
+  chainDetailRpcLatency: 'Ungefähre RPC-Roundtrip-Zeit dieser Aktualisierung: {ms} ms',
+  chainDetailRpcActive: 'Für diese Aktualisierung genutzt',
+  offlineBanner: 'Offline — letzter in diesem Browser gespeicherter Snapshot ({time}).',
+  offlineShowCache: 'Gespeicherten Snapshot nutzen',
+  offlineUseLive: 'Live-Daten nutzen',
+  offlineCachedNote: 'Nur lokal gespeichert, wenn die Aktualisierung klappt.',
+  chartBlendsServer: 'Verlauf kann kürzliche Werte vom optionalen API-Server enthalten.',
+  alertsRegimeLegend: 'Surf-Zustandswechsel',
+  alertsRegimeImprove: 'Hinweis, wenn die Surf-Bedingungen sich verbessern',
+  alertsRegimeWorsen: 'Hinweis, wenn die Surf-Bedingungen sich verschlechtern',
+  alertsNotifyRegimeBody: '{name}: {fromLabel} → {toLabel} ({fee} {unit})',
+  surfBandsAdvancedToggle: 'Erweitert: eigene Surf-Schwellen',
+  surfBandsHint:
+    'Optionale Schwellen pro Kette (nur in diesem Browser) für Wellen gut / Ruhig / Unruhig / Sturm. Gleiche Einheit wie im Dashboard (Gwei oder sat/vB). Werte müssen steigen: niedrig ≤ mittel ≤ hoch.',
+  surfBandsChain: 'Netz',
+  surfBandsLow: 'Niedrig (Obergrenze „Wellen gut“)',
+  surfBandsMid: 'Mittel (Obergrenze „Ruhig“)',
+  surfBandsHigh: 'Hoch (Obergrenze „Unruhig“)',
+  surfBandsSave: 'Für dieses Netz speichern',
+  surfBandsResetChain: 'Dieses Netz zurücksetzen',
+  surfBandsResetAll: 'Alle Overrides löschen',
+  surfBandsPreview: 'Vorschau bei aktuellem Standard',
+  surfBandsPlaceholder: 'z. B. 20',
 } satisfies Record<MessageKey, string>;
 
 const es = {
@@ -351,7 +437,11 @@ const es = {
   summaryMedian: 'Mediana estándar',
   summaryFiatNote: 'El fiat usa tu moneda cuando cargan los precios.',
   language: 'Idioma',
-  staleData: 'Mostrando últimos datos válidos — la actualización falló',
+  staleData: 'No se pudieron actualizar las comisiones en vivo — se muestran lecturas en caché de esta pestaña',
+  staleDataSub:
+    'Sigues en línea; falló la última consulta a RPC públicos o APIs de comisiones. Pulsa actualizar o espera al siguiente intervalo.',
+  footerBridgeNote:
+    'Retirar o usar un puente hacia L1 puede costar comisiones altas de L1 aunque el L2 parezca barato.',
   surfReportRegion: 'Informe surf para la red seleccionada',
   bitcoinTitle: 'Bitcoin',
   ethereumTitle: 'Ethereum',
@@ -393,6 +483,20 @@ const es = {
   refresh30s: 'Cada 30s',
   copyJson: 'Copiar snapshot JSON',
   copyJsonDone: 'Snapshot copiado',
+  rpcMetaShort: '{host} · {n} intento(s) RPC',
+  rpcDetailLine: 'Lectura usando el endpoint n.º {n} ({host}).',
+  chainDetailFetchMeta: 'RPC: {n} intento(s) hasta éxito · {host}',
+  chainDetailRpcLatency: 'Ida y vuelta RPC aprox. en esta actualización: {ms} ms',
+  chainDetailRpcActive: 'Usado en esta actualización',
+  offlineBanner: 'Sin conexión — último snapshot guardado en este navegador ({time}).',
+  offlineShowCache: 'Ver snapshot guardado',
+  offlineUseLive: 'Ver datos en vivo',
+  offlineCachedNote: 'Solo se guarda aquí cuando la actualización funciona.',
+  chartBlendsServer: 'La tendencia puede incluir datos recientes del API opcional.',
+  alertsRegimeLegend: 'Cambios de condición surf',
+  alertsRegimeImprove: 'Avisar cuando mejoren las condiciones surf',
+  alertsRegimeWorsen: 'Avisar cuando empeoren las condiciones surf',
+  alertsNotifyRegimeBody: '{name}: {fromLabel} → {toLabel} ({fee} {unit})',
 } satisfies Record<MessageKey, string>;
 
 export const messages: Record<Locale, Record<MessageKey, string>> = { en, de, es };

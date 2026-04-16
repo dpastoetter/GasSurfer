@@ -30,7 +30,9 @@ export function useTokenPrices(refreshIntervalMs = 60_000) {
 
   useEffect(() => {
     fetchPrices();
-    const id = setInterval(fetchPrices, refreshIntervalMs);
+    if (refreshIntervalMs <= 0) return;
+    const jittered = Math.round(refreshIntervalMs * (0.88 + Math.random() * 0.24));
+    const id = setInterval(fetchPrices, jittered);
     return () => clearInterval(id);
   }, [fetchPrices, refreshIntervalMs]);
 

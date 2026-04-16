@@ -111,6 +111,17 @@ export function validateTicksPayload(body) {
       }
       if (Object.keys(ex).length > 0) bitcoinExtras = ex;
     }
+    let fetchMeta = null;
+    if (c.fetchMeta != null && typeof c.fetchMeta === 'object') {
+      const attempts = Number(c.fetchMeta.rpcAttempts);
+      const host =
+        typeof c.fetchMeta.rpcUsedHost === 'string' && c.fetchMeta.rpcUsedHost.length <= 200
+          ? c.fetchMeta.rpcUsedHost
+          : '';
+      if (Number.isInteger(attempts) && attempts >= 1 && attempts <= 50 && host) {
+        fetchMeta = { rpcAttempts: attempts, rpcUsedHost: host };
+      }
+    }
     chains.push({
       chainId,
       name,
@@ -119,6 +130,7 @@ export function validateTicksPayload(body) {
       updatedAt,
       condition,
       dataSource,
+      fetchMeta,
       eip1559,
       bitcoinExtras,
     });

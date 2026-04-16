@@ -75,3 +75,12 @@ export const snapshotRateLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
 });
+
+/** Rate limit for GET /api/ticks/recent (read). */
+export const ticksRecentRateLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 90,
+  message: { error: 'Too many requests' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});

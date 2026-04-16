@@ -4,6 +4,7 @@ import { useI18n } from '../i18n/I18nContext';
 import { getRpcUrlsForChain } from '../config/chains';
 import { explorerUrlForChain } from '../config/explorers';
 import { useFocusTrap } from '../hooks/useFocusTrap';
+import { rpcHostname } from '../lib/rpcHostname';
 
 interface ChainDetailDrawerProps {
   chain: ChainGas | null;
@@ -12,7 +13,7 @@ interface ChainDetailDrawerProps {
 }
 
 export function ChainDetailDrawer({ chain, open, onClose }: ChainDetailDrawerProps) {
-  const { t } = useI18n();
+  const { t, ti } = useI18n();
   const panelRef = useRef<HTMLDivElement>(null);
   useFocusTrap(panelRef, open);
 
@@ -76,14 +77,43 @@ export function ChainDetailDrawer({ chain, open, onClose }: ChainDetailDrawerPro
               {isBtc ? t('chainDetailMempool') : t('chainDetailRpc')}
             </dt>
             <dd className="mt-1 space-y-1">
+              {!isBtc && chain.fetchMeta && (
+                <p className="text-xs text-slate-600 dark:text-surf-300/90 mb-2">
+                  {ti('chainDetailFetchMeta', {
+                    n: chain.fetchMeta.rpcAttempts,
+                    host: chain.fetchMeta.rpcUsedHost,
+                  })}
+                </p>
+              )}
+              {!isBtc && chain.fetchMeta?.rpcLatencyMs != null && (
+                <p className="text-xs text-slate-600 dark:text-surf-300/90 mb-2">
+                  {ti('chainDetailRpcLatency', { ms: chain.fetchMeta.rpcLatencyMs })}
+                </p>
+              )}
               {rpcUrls.length === 0 ? (
                 <span className="text-slate-500 dark:text-white/45">{t('chainDetailNoRpc')}</span>
               ) : (
-                rpcUrls.map((u) => (
-                  <div key={u} className="font-mono text-xs break-all text-slate-600 dark:text-surf-300/90 bg-slate-100/80 dark:bg-black/20 rounded-lg px-2 py-1.5">
-                    {u}
-                  </div>
-                ))
+                rpcUrls.map((u) => {
+                  const host = rpcHostname(u);
+                  const active = chain.dataSource === host || (isBtc && host.includes('mempool'));
+                  return (
+                    <div
+                      key={u}
+                      className={`font-mono text-xs break-all rounded-lg px-2 py-1.5 ${
+                        active
+                          ? 'bg-emerald-500/15 dark:bg-emerald-500/10 text-slate-800 dark:text-emerald-100/90 ring-1 ring-emerald-500/30'
+                          : 'text-slate-600 dark:text-surf-300/90 bg-slate-100/80 dark:bg-black/20'
+                      }`}
+                    >
+                      {u}
+                      {active && (
+                        <span className="block text-[10px] font-sans text-emerald-700 dark:text-emerald-300/90 mt-0.5">
+                          {t('chainDetailRpcActive')}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })
               )}
             </dd>
           </div>

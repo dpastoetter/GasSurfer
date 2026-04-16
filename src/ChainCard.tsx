@@ -204,7 +204,13 @@ export function ChainCard({
         {chain.chainId === BITCOIN_CHAIN_ID && (
           <p className="text-slate-400 dark:text-white/30 text-[10px] mt-0.5">{t('btcBlockHint')}</p>
         )}
-        <DataFreshness key={`${chain.chainId}-${chain.updatedAt}`} updatedAt={chain.updatedAt} dataSource={chain.dataSource} className="mt-1" />
+        <DataFreshness
+          key={`${chain.chainId}-${chain.updatedAt}`}
+          updatedAt={chain.updatedAt}
+          dataSource={chain.dataSource}
+          fetchMeta={chain.fetchMeta}
+          className="mt-1"
+        />
         {(() => {
           const costToken = gasCostInToken(chain.chainId, chain.gas.standard);
           const price = getPriceInCurrency(prices, coinGeckoId, currency);

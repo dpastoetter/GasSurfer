@@ -1,11 +1,22 @@
-import { useState, useEffect, useCallback } from 'react';
-import type { ChainGas } from '../types';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import type { ChainGas, SurfCondition } from '../types';
 import { formatGwei, feeUnitLabel } from '../types';
 import { useI18n } from '../i18n/I18nContext';
+import { conditionLabels } from '../i18n/messages';
 
 const STORAGE_PREFIX = 'gas-surfer-alert-below-';
 const LAST_NOTIFY_PREFIX = 'gas-surfer-alert-last-';
+const REGIME_PREFIX = 'gas-surfer-alert-regime-';
+const REGIME_COOL_PREFIX = 'gas-surfer-alert-regime-cool-';
 const COOLDOWN_MS = 5 * 60 * 1000;
+const REGIME_COOLDOWN_MS = 30 * 60 * 1000;
+
+const CONDITION_RANK: Record<SurfCondition, number> = {
+  'surfs-up': 0,
+  smooth: 1,
+  choppy: 2,
+  storm: 3,
+};
 
 function loadThreshold(chainId: number): string {
   try {
@@ -24,6 +35,30 @@ function saveThreshold(chainId: number, value: string) {
   }
 }
 
+type RegimePrefs = { improve: boolean; worsen: boolean };
+
+function loadRegime(chainId: number): RegimePrefs {
+  try {
+    const raw = localStorage.getItem(REGIME_PREFIX + chainId);
+    if (!raw) return { improve: false, worsen: false };
+    const p = JSON.parse(raw) as RegimePrefs;
+    return {
+      improve: Boolean(p.improve),
+      worsen: Boolean(p.worsen),
+    };
+  } catch {
+    return { improve: false, worsen: false };
+  }
+}
+
+function saveRegime(chainId: number, prefs: RegimePrefs) {
+  try {
+    localStorage.setItem(REGIME_PREFIX + chainId, JSON.stringify(prefs));
+  } catch {
+    /* ignore */
+  }
+}
+
 function initialNotificationPermission(): NotificationPermission | 'unsupported' {
   if (typeof globalThis.Notification === 'undefined') return 'unsupported';
   return Notification.permission;
@@ -34,9 +69,12 @@ interface FeeAlertsPanelProps {
 }
 
 function FeeAlertsPanelInner({ chain }: { chain: ChainGas }) {
-  const { t, ti } = useI18n();
+  const { t, ti, locale } = useI18n();
+  const labels = conditionLabels(locale);
   const [threshold, setThreshold] = useState(() => loadThreshold(chain.chainId));
+  const [regime, setRegime] = useState(() => loadRegime(chain.chainId));
   const [perm, setPerm] = useState<NotificationPermission | 'unsupported'>(initialNotificationPermission);
+  const prevConditionRef = useRef<SurfCondition | null>(null);
 
   const requestPermission = useCallback(async () => {
     if (typeof Notification === 'undefined') return;
@@ -71,7 +109,49 @@ function FeeAlertsPanelInner({ chain }: { chain: ChainGas }) {
     } catch {
       /* ignore */
     }
-  }, [chain, perm, t, ti]);
+  }, [chain.chainId, chain.name, chain.gas.standard, perm, t, ti]);
+
+  useEffect(() => {
+    if (perm !== 'granted') return;
+    const prev = prevConditionRef.current;
+    prevConditionRef.current = chain.condition;
+    if (prev == null) return;
+    if (prev === chain.condition) return;
+
+    const rp = loadRegime(chain.chainId);
+    const rPrev = CONDITION_RANK[prev];
+    const rNext = CONDITION_RANK[chain.condition];
+    const improved = rNext < rPrev;
+    const worsened = rNext > rPrev;
+    if (improved && !rp.improve) return;
+    if (worsened && !rp.worsen) return;
+    if (!improved && !worsened) return;
+
+    const dir = improved ? 'up' : 'down';
+    const coolKey = REGIME_COOL_PREFIX + chain.chainId + '-' + dir;
+    let last = 0;
+    try {
+      last = parseInt(sessionStorage.getItem(coolKey) ?? '0', 10) || 0;
+    } catch {
+      /* ignore */
+    }
+    if (Date.now() - last < REGIME_COOLDOWN_MS) return;
+
+    try {
+      sessionStorage.setItem(coolKey, String(Date.now()));
+      new Notification(t('alertsNotifyTitle'), {
+        body: ti('alertsNotifyRegimeBody', {
+          name: chain.name,
+          fromLabel: labels[prev].label,
+          toLabel: labels[chain.condition].label,
+          fee: formatGwei(chain.gas.standard),
+          unit: feeUnitLabel(chain.chainId),
+        }),
+      });
+    } catch {
+      /* ignore */
+    }
+  }, [chain.chainId, chain.condition, chain.name, chain.gas.standard, perm, t, ti, labels]);
 
   const save = () => {
     saveThreshold(chain.chainId, threshold.trim());
@@ -80,6 +160,12 @@ function FeeAlertsPanelInner({ chain }: { chain: ChainGas }) {
   const clear = () => {
     setThreshold('');
     saveThreshold(chain.chainId, '');
+  };
+
+  const toggleRegime = (key: keyof RegimePrefs) => {
+    const next = { ...regime, [key]: !regime[key] };
+    setRegime(next);
+    saveRegime(chain.chainId, next);
   };
 
   return (
@@ -98,6 +184,27 @@ function FeeAlertsPanelInner({ chain }: { chain: ChainGas }) {
         <p className="text-emerald-600 dark:text-emerald-400 text-xs mb-2">{t('alertsGranted')}</p>
       )}
       {perm === 'denied' && <p className="text-amber-600 dark:text-amber-300 text-xs mb-2">{t('alertsDenied')}</p>}
+      <fieldset className="mb-4 space-y-2 border border-slate-200/40 dark:border-white/10 rounded-xl p-3">
+        <legend className="text-xs font-medium text-slate-600 dark:text-surf-300 px-1">{t('alertsRegimeLegend')}</legend>
+        <label className="flex items-center gap-2 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={regime.improve}
+            onChange={() => toggleRegime('improve')}
+            className="rounded border-slate-400 text-surf-600 focus:ring-surf-400/50"
+          />
+          <span className="text-slate-700 dark:text-surf-200 text-xs">{t('alertsRegimeImprove')}</span>
+        </label>
+        <label className="flex items-center gap-2 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={regime.worsen}
+            onChange={() => toggleRegime('worsen')}
+            className="rounded border-slate-400 text-surf-600 focus:ring-surf-400/50"
+          />
+          <span className="text-slate-700 dark:text-surf-200 text-xs">{t('alertsRegimeWorsen')}</span>
+        </label>
+      </fieldset>
       <div className="flex flex-wrap items-end gap-2">
         <label className="flex flex-col gap-1">
           <span className="text-slate-600 dark:text-surf-300 text-xs">

@@ -11,6 +11,7 @@ export default defineConfig({
       '/api/ticks': { target: 'http://localhost:3001', changeOrigin: true },
       '/api/v1/snapshot.json': { target: 'http://localhost:3001', changeOrigin: true },
       '/api/snapshot.json': { target: 'http://localhost:3001', changeOrigin: true },
+      '/api/ticks/recent': { target: 'http://localhost:3001', changeOrigin: true },
       '/api/rpc/eth': { target: 'https://ethereum.publicnode.com', changeOrigin: true, rewrite: () => '/', secure: true },
       '/api/rpc/base': { target: 'https://mainnet.base.org', changeOrigin: true, rewrite: () => '/' },
       '/api/rpc/arbitrum': { target: 'https://arb1.arbitrum.io', changeOrigin: true, rewrite: () => '/rpc' },

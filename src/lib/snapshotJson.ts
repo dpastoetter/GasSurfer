@@ -1,4 +1,4 @@
-import type { ChainGas } from '../types';
+import type { ChainGas, RpcFetchMeta } from '../types';
 
 export type ChainSnapshotRow = {
   chainId: number;
@@ -8,6 +8,7 @@ export type ChainSnapshotRow = {
   gas: { slow: number; standard: number; fast: number };
   updatedAt: number;
   dataSource: string | null;
+  fetchMeta?: RpcFetchMeta | null;
   eip1559: { baseFeeGwei: number; priorityFeeGwei: number } | null;
   bitcoinExtras: ChainGas['bitcoinExtras'] | null;
 };
@@ -30,6 +31,7 @@ export function buildChainsSnapshotPayload(chains: ChainGas[], stale: boolean): 
       gas: { ...c.gas },
       updatedAt: c.updatedAt,
       dataSource: c.dataSource ?? null,
+      fetchMeta: c.fetchMeta ? { ...c.fetchMeta } : null,
       eip1559: c.eip1559 ? { ...c.eip1559 } : null,
       bitcoinExtras: c.bitcoinExtras ? { ...c.bitcoinExtras } : null,
     })),

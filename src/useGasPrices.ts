@@ -1,7 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import type { ChainGas, GasTier, SurfCondition } from './types';
+import type { ChainGas, GasTier } from './types';
 import { BITCOIN_CHAIN_ID } from './types';
 import { EVM_CHAINS, MEMPOOL_API } from './config/chains';
+import { rpcHostname } from './lib/rpcHostname';
+import { loadSurfBandOverrides, type SurfBandOverride } from './lib/surfBandsStorage';
+import { getSurfCondition } from './lib/surfCondition';
 
 const EVM_BATCH_SIZE = 4;
 const EVM_BATCH_DELAY_MS = 100;
@@ -13,26 +16,6 @@ const EIP1559_CHAIN_IDS = new Set([
 
 export type GasPriceErrorKey = 'errorLoadGas' | 'errorRefreshGas' | null;
 
-function getCondition(standardFee: number, chainId: number): SurfCondition {
-  if (chainId === BITCOIN_CHAIN_ID) {
-    const low = 5,
-      mid = 15,
-      high = 50;
-    if (standardFee <= low) return 'surfs-up';
-    if (standardFee <= mid) return 'smooth';
-    if (standardFee <= high) return 'choppy';
-    return 'storm';
-  }
-  const isL2 = ![1, 137, 56, 43114, 250, 100, 42220].includes(chainId);
-  const low = isL2 ? 0.05 : chainId === 56 ? 3 : chainId === 137 ? 30 : chainId === 43114 ? 25 : chainId === 250 ? 1 : chainId === 100 ? 1 : 20;
-  const mid = isL2 ? 0.2 : chainId === 56 ? 5 : chainId === 137 ? 50 : chainId === 43114 ? 50 : chainId === 250 ? 5 : chainId === 100 ? 2 : 50;
-  const high = isL2 ? 0.5 : chainId === 56 ? 10 : chainId === 137 ? 80 : chainId === 43114 ? 100 : chainId === 250 ? 10 : chainId === 100 ? 5 : 80;
-  if (standardFee <= low) return 'surfs-up';
-  if (standardFee <= mid) return 'smooth';
-  if (standardFee <= high) return 'choppy';
-  return 'storm';
-}
-
 function weiToGwei(result: string | number): number {
   if (typeof result === 'number') {
     if (result >= 1e9) return result / 1e9;
@@ -42,34 +25,34 @@ function weiToGwei(result: string | number): number {
   return wei / 1e9;
 }
 
-function rpcHostname(rpcUrl: string): string {
-  try {
-    const u = new URL(rpcUrl);
-    return u.hostname.replace(/^www\./, '');
-  } catch {
-    return 'RPC';
-  }
-}
-
 function roundTier(n: number): number {
   return n >= 1 ? Math.round(n) : Math.round(n * 100) / 100;
 }
 
-async function jsonRpc(rpcUrl: string, method: string, params: unknown[]): Promise<{ result?: unknown; error?: unknown }> {
+async function jsonRpc(
+  rpcUrl: string,
+  method: string,
+  params: unknown[]
+): Promise<{ result?: unknown; error?: unknown; latencyMs: number }> {
+  const t0 = performance.now();
   try {
     const res = await fetch(rpcUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ jsonrpc: '2.0', method, params, id: 1 }),
     });
-    return (await res.json()) as { result?: unknown; error?: unknown };
+    const latencyMs = Math.round(performance.now() - t0);
+    const data = (await res.json()) as { result?: unknown; error?: unknown };
+    return { ...data, latencyMs };
   } catch {
-    return { error: 'network' };
+    return { error: 'network', latencyMs: Math.round(performance.now() - t0) };
   }
 }
 
 /** Base fee + suggested priority tip; effective used as “standard” tier. */
-async function fetchEip1559Fees(rpcUrl: string): Promise<{ baseFeeGwei: number; priorityFeeGwei: number; effectiveGwei: number } | null> {
+async function fetchEip1559Fees(
+  rpcUrl: string
+): Promise<{ baseFeeGwei: number; priorityFeeGwei: number; effectiveGwei: number; rpcLatencyMs: number } | null> {
   const blockRes = await jsonRpc(rpcUrl, 'eth_getBlockByNumber', ['latest', false]);
   if (blockRes.error) return null;
   const block = blockRes.result as { baseFeePerGas?: string } | null;
@@ -79,7 +62,9 @@ async function fetchEip1559Fees(rpcUrl: string): Promise<{ baseFeeGwei: number; 
   if (!Number.isFinite(base) || base < 0) return null;
 
   let priority = 1.5;
+  let extraLatency = 0;
   const tipRes = await jsonRpc(rpcUrl, 'eth_maxPriorityFeePerGas', []);
+  extraLatency = tipRes.latencyMs;
   if (!tipRes.error && tipRes.result != null) {
     const p = weiToGwei(tipRes.result as string | number);
     if (Number.isFinite(p) && p > 0) priority = p;
@@ -90,10 +75,12 @@ async function fetchEip1559Fees(rpcUrl: string): Promise<{ baseFeeGwei: number; 
     baseFeeGwei: roundTier(base),
     priorityFeeGwei: roundTier(priority),
     effectiveGwei: roundTier(effective),
+    rpcLatencyMs: blockRes.latencyMs + extraLatency,
   };
 }
 
-async function fetchGasFromRpc(rpcUrl: string): Promise<number | null> {
+async function fetchGasFromRpc(rpcUrl: string): Promise<{ gwei: number; latencyMs: number } | null> {
+  const t0 = performance.now();
   try {
     const res = await fetch(rpcUrl, {
       method: 'POST',
@@ -105,6 +92,7 @@ async function fetchGasFromRpc(rpcUrl: string): Promise<number | null> {
         id: 1,
       }),
     });
+    const latencyMs = Math.round(performance.now() - t0);
     let data: { error?: unknown; result?: unknown };
     try {
       data = await res.json();
@@ -114,13 +102,17 @@ async function fetchGasFromRpc(rpcUrl: string): Promise<number | null> {
     const result = data.result;
     if (!res.ok || data.error || result == null) return null;
     const gwei = weiToGwei(result as string | number);
-    return Number.isFinite(gwei) && gwei > 0 ? gwei : null;
+    return Number.isFinite(gwei) && gwei > 0 ? { gwei, latencyMs } : null;
   } catch {
     return null;
   }
 }
 
-async function fetchChainGas(chain: (typeof EVM_CHAINS)[number]): Promise<ChainGas | null> {
+async function fetchChainGas(
+  chain: (typeof EVM_CHAINS)[number],
+  bandByChain: Record<number, SurfBandOverride>
+): Promise<ChainGas | null> {
+  const custom = bandByChain[chain.chainId];
   for (let i = 0; i < chain.rpcUrls.length; i++) {
     const rpcUrl = chain.rpcUrls[i];
     const host = rpcHostname(rpcUrl);
@@ -139,9 +131,14 @@ async function fetchChainGas(chain: (typeof EVM_CHAINS)[number]): Promise<ChainG
           name: chain.name,
           symbol: chain.symbol,
           gas,
-          condition: getCondition(gas.standard, chain.chainId),
+          condition: getSurfCondition(gas.standard, chain.chainId, custom),
           updatedAt: Date.now(),
           dataSource: host,
+          fetchMeta: {
+            rpcAttempts: i + 1,
+            rpcUsedHost: host,
+            rpcLatencyMs: e1559.rpcLatencyMs,
+          },
           eip1559: {
             baseFeeGwei: e1559.baseFeeGwei,
             priorityFeeGwei: e1559.priorityFeeGwei,
@@ -150,8 +147,9 @@ async function fetchChainGas(chain: (typeof EVM_CHAINS)[number]): Promise<ChainG
       }
     }
 
-    const gwei = await fetchGasFromRpc(rpcUrl);
-    if (gwei != null && gwei > 0 && gwei < 1e6) {
+    const gasRes = await fetchGasFromRpc(rpcUrl);
+    if (gasRes != null && gasRes.gwei > 0 && gasRes.gwei < 1e6) {
+      const { gwei, latencyMs } = gasRes;
       const gas: GasTier = {
         slow: roundTier(Math.max(0.001, gwei * 0.9)),
         standard: roundTier(gwei),
@@ -162,9 +160,10 @@ async function fetchChainGas(chain: (typeof EVM_CHAINS)[number]): Promise<ChainG
         name: chain.name,
         symbol: chain.symbol,
         gas,
-        condition: getCondition(gas.standard, chain.chainId),
+        condition: getSurfCondition(gas.standard, chain.chainId, custom),
         updatedAt: Date.now(),
         dataSource: host,
+        fetchMeta: { rpcAttempts: i + 1, rpcUsedHost: host, rpcLatencyMs: latencyMs },
       };
     }
   }
@@ -172,11 +171,11 @@ async function fetchChainGas(chain: (typeof EVM_CHAINS)[number]): Promise<ChainG
 }
 
 /** Stagger EVM RPC fetches to reduce proxy / rate-limit pressure. */
-async function fetchAllEvmStaggered(): Promise<(ChainGas | null)[]> {
+async function fetchAllEvmStaggered(bandByChain: Record<number, SurfBandOverride>): Promise<(ChainGas | null)[]> {
   const out: (ChainGas | null)[] = [];
   for (let i = 0; i < EVM_CHAINS.length; i += EVM_BATCH_SIZE) {
     const batch = EVM_CHAINS.slice(i, i + EVM_BATCH_SIZE);
-    const chunk = await Promise.all(batch.map(fetchChainGas));
+    const chunk = await Promise.all(batch.map((c) => fetchChainGas(c, bandByChain)));
     out.push(...chunk);
     if (i + EVM_BATCH_SIZE < EVM_CHAINS.length) {
       await new Promise((r) => setTimeout(r, EVM_BATCH_DELAY_MS));
@@ -191,7 +190,8 @@ function toNum(v: unknown): number {
   return Number.isFinite(n) ? n : NaN;
 }
 
-async function fetchBitcoinFees(): Promise<ChainGas | null> {
+async function fetchBitcoinFees(bandByChain: Record<number, SurfBandOverride>): Promise<ChainGas | null> {
+  const custom = bandByChain[BITCOIN_CHAIN_ID];
   try {
     const res = await fetch(MEMPOOL_API);
     const data = (await res.json()) as Record<string, unknown>;
@@ -216,9 +216,10 @@ async function fetchBitcoinFees(): Promise<ChainGas | null> {
       name: 'Bitcoin',
       symbol: 'BTC',
       gas,
-      condition: getCondition(gas.standard, BITCOIN_CHAIN_ID),
+      condition: getSurfCondition(gas.standard, BITCOIN_CHAIN_ID, custom),
       updatedAt: Date.now(),
       dataSource: 'mempool.space',
+      fetchMeta: { rpcAttempts: 1, rpcUsedHost: 'mempool.space' },
       bitcoinExtras: hasExtras ? bitcoinExtras : undefined,
     };
   } catch {
@@ -235,8 +236,12 @@ export function useGasPrices(refreshIntervalMs: number) {
 
   const fetchAll = useCallback(async () => {
     setErrorKey(null);
+    const bandByChain = loadSurfBandOverrides();
     try {
-      const [evmResults, btc] = await Promise.all([fetchAllEvmStaggered(), fetchBitcoinFees()]);
+      const [evmResults, btc] = await Promise.all([
+        fetchAllEvmStaggered(bandByChain),
+        fetchBitcoinFees(bandByChain),
+      ]);
       const valid = evmResults.filter((r): r is ChainGas => r !== null);
       if (btc) valid.push(btc);
 
@@ -270,7 +275,8 @@ export function useGasPrices(refreshIntervalMs: number) {
   useEffect(() => {
     queueMicrotask(() => fetchAll());
     if (refreshIntervalMs <= 0) return;
-    const id = setInterval(fetchAll, refreshIntervalMs);
+    const jittered = Math.round(refreshIntervalMs * (0.88 + Math.random() * 0.24));
+    const id = setInterval(fetchAll, jittered);
     return () => clearInterval(id);
   }, [fetchAll, refreshIntervalMs]);
 

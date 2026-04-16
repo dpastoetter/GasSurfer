@@ -20,6 +20,8 @@ interface SurfReportProps {
   bitcoinExtras?: BitcoinMempoolExtras;
   /** Extra classes on the outer wrapper (e.g. delight animation). */
   wrapperClassName?: string;
+  /** Opens Learn drawer (e.g. to Standard glossary). */
+  onOpenLearnStandard?: () => void;
 }
 
 export function SurfReport({
@@ -34,6 +36,7 @@ export function SurfReport({
   eip1559,
   bitcoinExtras,
   wrapperClassName = '',
+  onOpenLearnStandard,
 }: SurfReportProps) {
   const [copied, setCopied] = useState(false);
   const { t, ti, locale } = useI18n();
@@ -81,6 +84,17 @@ export function SurfReport({
           {copied ? `✓ ${t('copied')}` : `📋 ${t('copy')}`}
         </button>
       </p>
+      {onOpenLearnStandard && (
+        <p className="mt-2">
+          <button
+            type="button"
+            onClick={onOpenLearnStandard}
+            className="text-xs font-medium text-surf-600 dark:text-surf-300 underline underline-offset-2 hover:text-slate-900 dark:hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-surf-400/50 rounded"
+          >
+            {t('standardLearnLink')}
+          </button>
+        </p>
+      )}
       {trendPercent != null && (
         <p className="text-surf-600 dark:text-surf-300/90 text-sm mt-1">
           {trendPercent <= 0 ? (

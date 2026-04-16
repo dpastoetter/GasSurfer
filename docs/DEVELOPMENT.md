@@ -30,7 +30,9 @@ gas-surfer/
 ├── scripts/
 │   └── screenshot.mjs      # Playwright script for README screenshots
 ├── server/                  # Backend API for fee averages
-│   ├── index.js             # Express: POST /api/samples, GET /api/averages
+│   ├── app.js               # Express app (routes + middleware); importable for tests
+│   ├── app.d.ts             # Type shim for `app.js` (tsc)
+│   ├── index.js             # Listens on PORT (default 3001)
 │   ├── db.js                # SQLite: one value per day per chain
 │   ├── middleware.js        # Helmet, CORS, rate limiting
 │   └── security.js         # Input validation (chainId allowlist, value/timestamp)
@@ -46,6 +48,7 @@ gas-surfer/
 
 - **Server**: run `npm run server` (or `npm run dev:all` to run server + Vite together). Listens on port 3001 by default (`PORT` env).
 - **Endpoints**:
+  - `GET /api/health` — JSON `{ "ok": true, "service": "gas-surfer-api" }` for load balancers and smoke checks (no DB hit).
   - `POST /api/samples` — body `{ "samples": [ { "chainId", "value", "timestamp" } ] }`. First sample per (chain_id, date) is stored; later samples for the same day are ignored (no overwrite) to avoid spamming the database.
   - `GET /api/averages?chainIds=1,0,8453` — returns `{ [chainId]: { avg7d, avg30d, avg90d, avg180d } }`.
 - **Database**: SQLite file at `server/gas-surfer.db` (or `GAS_SURFER_DB` env). Table `daily_fees (chain_id, date, value, updated_at)`.
@@ -101,17 +104,20 @@ Production: deploy the API server and point the frontend at it (or use the same 
 
 ## Surf condition thresholds
 
-In `useGasPrices.ts`, `getCondition(standardFee, chainId)` maps the standard fee to a condition. Bitcoin uses sat/vB bands (e.g. 5 / 15 / 50). EVM chains use gwei bands; L2s use lower bands than L1. Adjust the numeric thresholds in `getCondition` to tune “Surf’s up” vs “Storm”.
+Default bands live in `src/lib/surfCondition.ts` (`getSurfCondition`). Bitcoin uses sat/vB thresholds; EVM uses gwei with lower defaults on L2. **User overrides:** the “Advanced: custom surf bands” panel (see `src/components/SurfBandsPanel.tsx`) stores optional per-chain low / mid / high values in `localStorage` under `gas-surfer-surf-bands-v1`; `useGasPrices` reads them on each refresh. Edit `surfCondition.ts` defaults to change app-wide behavior for everyone.
 
 ---
 
 ## Build and checks
 
 ```bash
+npm run lint    # eslint
+npm run test    # vitest (unit + src/serverApiContract.test.ts — Express app in-process)
 npm run build   # tsc -b && vite build
 npm run preview # serve dist/
-npm run lint    # eslint
 ```
+
+**End-to-end (Playwright):** `npm run test:e2e` builds the app, serves `dist/` with `vite preview`, and runs `tests/smoke.spec.ts`. The spec **mocks** mempool.space, CoinGecko, and JSON-RPC traffic so results do not depend on public RPC health. First time (or after a Playwright upgrade), install browsers: `npx playwright install chromium`.
 
 ### Regenerating screenshots
 

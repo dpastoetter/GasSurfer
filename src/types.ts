@@ -31,6 +31,15 @@ export type BitcoinMempoolExtras = {
   fastestFee?: number;
 };
 
+/** How many RPC endpoints were tried before the successful response (EVM). */
+export type RpcFetchMeta = {
+  rpcAttempts: number;
+  /** Hostname that answered (same idea as dataSource for EVM). */
+  rpcUsedHost: string;
+  /** Approximate round-trip time for the successful JSON-RPC request(s) on this update (ms). */
+  rpcLatencyMs?: number;
+};
+
 export interface ChainGas {
   chainId: number;
   name: string;
@@ -40,6 +49,8 @@ export interface ChainGas {
   updatedAt: number;
   /** Human-readable data source (e.g. RPC hostname, mempool.space) */
   dataSource?: string;
+  /** RPC attempt count + winning host (EVM); Bitcoin uses attempts 1 + mempool host. */
+  fetchMeta?: RpcFetchMeta;
   eip1559?: Eip1559Fees;
   bitcoinExtras?: BitcoinMempoolExtras;
 }

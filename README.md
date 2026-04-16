@@ -35,6 +35,8 @@ _Regenerated with `npm run screenshot` while the dev server is running (see [Pus
 - **Share & recap** — PNG snapshot (share or download) and a local-only weekly recap (IndexedDB samples)
 - **Trust cues** — Per-chain data age and RPC / mempool source label
 
+**Privacy / data inventory:** [docs/PRIVACY.md](docs/PRIVACY.md) (what leaves the browser: RPCs, mempool.space, CoinGecko, optional API).
+
 ---
 
 ## Quick start
@@ -84,7 +86,7 @@ Deploy the `dist/` folder to any static host (Vercel, Netlify, GitHub Pages, etc
 
 ## Data sources
 
-- **EVM gas** — `eth_gasPrice` via public RPCs (multiple fallbacks per chain)
+- **EVM gas** — Public RPCs with fallbacks per chain; EIP-1559 chains use effective base + priority when the node exposes it, otherwise `eth_gasPrice`
 - **Bitcoin fees** — [mempool.space](https://mempool.space) recommended fees (sat/vB)
 - **Prices** — [CoinGecko](https://www.coingecko.com/en/api) simple/price (no key)
 
@@ -102,14 +104,21 @@ All URLs are allowlisted in `src/config/chains.ts` for safe use as a static webs
 
 ## Documentation
 
+- **[CONTRIBUTING.md](CONTRIBUTING.md)** — Local setup, env vars, tests, screenshots, PR checklist
+- **[docs/PRIVACY.md](docs/PRIVACY.md)** — Outbound requests and what stays on the device
 - **[docs/V0.1.md](docs/V0.1.md)** — Version 0.1 user guide and release notes
 - **[docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)** — Config, adding chains, project layout, backend API, security
+- **[CHANGELOG.md](CHANGELOG.md)** — Notable changes
+
+### Tests
+
+From `gas-surfer`: `npm run lint`, `npm run test`, `npm run build`, then `npm run test:e2e` (install browsers once with `npx playwright install chromium`). Details are in [CONTRIBUTING.md](CONTRIBUTING.md#checks-before-a-pr).
 
 ---
 
 ## Pushing to GitHub
 
-- Run `npm run build` and `npm run lint` in `gas-surfer` before pushing.
+- Run `npm run lint`, `npm run test`, `npm run build`, and (when possible) `npm run test:e2e` in `gas-surfer` before pushing.
 - The repo can be the `gas-surfer` folder only, or the parent folder (with root `package.json` that delegates to `gas-surfer`). Ensure `.gitignore` excludes `node_modules`, `dist`, and `server/gas-surfer.db`.
 - Screenshots in `docs/screenshots/` are tracked in git. To refresh them: start the app, then `npx playwright install chromium` (once), then `npm run screenshot`. See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md#regenerating-screenshots).
 
