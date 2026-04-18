@@ -25,5 +25,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- **Vitest** dev dependency updated to **4.x** (from 3.x); `tsconfig.app.json` includes `"node"` in `compilerOptions.types` so `tsc -b` resolves `node:http` in API contract tests after the lockfile refresh; `.github/dependabot.yml` no longer references a missing `dependencies` label.
 - Mini chart uses merged local + server history when available.
 - Express app factory lives in `server/app.js`; `server/index.js` only listens (easier testing).
