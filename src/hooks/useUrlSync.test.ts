@@ -14,6 +14,8 @@ describe('readUrlParams', () => {
       chainId: 137,
       currency: 'eur',
       lang: 'es',
+      compareIds: [],
+      txPreset: null,
     });
   });
 
@@ -25,6 +27,36 @@ describe('readUrlParams', () => {
       chainId: null,
       currency: null,
       lang: null,
+      compareIds: [],
+      txPreset: null,
     });
+  });
+
+  it('parses compare= comma chain ids (max 3, allowlisted)', () => {
+    vi.stubGlobal('window', {
+      location: { search: '?compare=1,8453,42161' },
+    });
+    expect(readUrlParams().compareIds).toEqual([1, 8453, 42161]);
+  });
+
+  it('drops unknown and duplicate chain ids in compare', () => {
+    vi.stubGlobal('window', {
+      location: { search: '?compare=1,99999,1,8453' },
+    });
+    expect(readUrlParams().compareIds).toEqual([1, 8453]);
+  });
+
+  it('parses txPreset for estimator', () => {
+    vi.stubGlobal('window', {
+      location: { search: '?txPreset=nft' },
+    });
+    expect(readUrlParams().txPreset).toBe('nft');
+  });
+
+  it('rejects invalid txPreset', () => {
+    vi.stubGlobal('window', {
+      location: { search: '?txPreset=mint' },
+    });
+    expect(readUrlParams().txPreset).toBe(null);
   });
 });

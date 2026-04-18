@@ -17,6 +17,11 @@ gas-surfer/
 │   ├── useTokenPrices.ts    # CoinGecko prices, useTokenPrices()
 │   ├── useFeeAverages.ts    # 7/30/90/180d averages from backend API
 │   ├── useChartHistory.ts   # Rolling history for mini chart
+│   ├── hooks/
+│   │   ├── useUrlSync.ts    # readUrlParams + replaceState sync (chain, currency, lang, compare, txPreset)
+│   │   └── …                # favorites, spark history, onboarding, etc.
+│   ├── lib/
+│   │   └── urlQuerySchema.ts # parse compare= / txPreset= (allowlisted chain IDs)
 │   ├── feeHistory.ts        # FeeAverages type only (storage is backend)
 │   ├── api/
 │   │   └── averages.ts      # postSamples(), getAverages() for backend
@@ -28,7 +33,9 @@ gas-surfer/
 │   └── FeeAveragesDisplay.tsx
 ├── public/
 ├── scripts/
-│   └── screenshot.mjs      # Playwright script for README screenshots
+│   └── screenshot.mjs      # Playwright: hero/full/mobile PNGs for README
+├── tests/
+│   └── smoke.spec.ts       # Playwright (title, a11y, URL compare & txPreset hydration)
 ├── server/                  # Backend API for fee averages
 │   ├── app.js               # Express app (routes + middleware); importable for tests
 │   ├── app.d.ts             # Type shim for `app.js` (tsc)
@@ -92,6 +99,26 @@ gas-surfer/
 
 ---
 
+## Shareable URL state
+
+The app mirrors selected chain, currency, locale, compare selection, and tx-estimator preset into the query string with **`history.replaceState`** (no new browser history entries). On first load, `readUrlParams()` in [`src/hooks/useUrlSync.ts`](../src/hooks/useUrlSync.ts) parses the current `window.location.search`.
+
+| Query param | Notes |
+|-------------|--------|
+| `chain` | Selected `chainId` (integer). |
+| `currency` | One of the supported fiat codes. |
+| `lang` | `en` \| `de` \| `es`. |
+| `compare` | Comma-separated list, **max three** unique IDs. Only IDs in [`URL_QUERY_CHAIN_IDS`](../src/lib/urlQuerySchema.ts) (Bitcoin `0` + configured EVM chains) are kept; order preserved. |
+| `txPreset` | `erc20` \| `nft` \| `swap` — matches Tx estimator preset gas limits in [`TX_PRESET_GAS_LIMIT`](../src/lib/urlQuerySchema.ts). |
+
+**Hydration in [`App.tsx`](../src/App.tsx):** `compareIds` state is seeded from the URL; once `displayChains` is non-empty, the UI and `useUrlSync` use a **`compareIdsForUrl` memo** that filters to known chains (unknown IDs never appear in the synced URL). Compare dialog auto-opens when the initial URL contained at least one valid `compare` id.
+
+**Tx estimator ([`TxEstimatorPanel.tsx`](../src/components/TxEstimatorPanel.tsx)):** When `txPreset` is set, the gas limit follows the preset until the user types in the gas field (that clears `txPreset` from state and the URL). Choosing a preset button sets both limit and URL again.
+
+**Tests:** [`src/lib/urlQuerySchema.test.ts`](../src/lib/urlQuerySchema.test.ts), [`src/hooks/useUrlSync.test.ts`](../src/hooks/useUrlSync.test.ts); Playwright smoke loads `?compare=1,8453` and `?chain=1&txPreset=nft` in [`tests/smoke.spec.ts`](../tests/smoke.spec.ts).
+
+---
+
 ## Dev server proxy
 
 `vite.config.ts` proxies:
@@ -122,10 +149,12 @@ npm run preview # serve dist/
 ### Regenerating screenshots
 
 1. Install Playwright’s Chromium once: `npx playwright install chromium`
-2. Start the dev server (e.g. `npm run dev`); if Vite uses another port, set `BASE_URL` when running the script.
+2. Start the dev server (e.g. `npm run dev`); if Vite uses another port, set `BASE_URL` when running the script. If Playwright reports `ECONNREFUSED` while Vite is up, bind explicitly (e.g. `npx vite --host 127.0.0.1 --strictPort`) and run `BASE_URL=http://127.0.0.1:5173 npm run screenshot`.
 3. In another terminal run: `npm run screenshot` (or `BASE_URL=http://localhost:5174 npm run screenshot` if the app is on 5174).
 
-This saves `docs/screenshots/hero.png`, `full.png`, and `mobile.png` (used in the README). Optional: `SCREENSHOT_WAIT=8000` to wait longer for data before capturing.
+This saves `docs/screenshots/hero.png`, `full.png`, and `mobile.png` (used in the README). Optional: `SCREENSHOT_WAIT=8000` (or higher) to wait longer for live RPC data before capturing.
+
+The script skips onboarding via `localStorage` so captures show the main dashboard. **Commit** updated PNGs when you refresh marketing screenshots.
 
 ---
 

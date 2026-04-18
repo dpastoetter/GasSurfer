@@ -14,10 +14,10 @@ We will acknowledge your report and, if the issue is accepted, work on a fix. We
 
 ## Security model of this project
 
-- **Static site** — Gas Surfer is a client-only web app. There is no backend; the built `dist/` is static HTML, CSS, and JavaScript.
-- **No secrets** — The repository and the deployed app use only public endpoints (RPCs, mempool.space, CoinGecko). No API keys or credentials are required or stored.
-- **Allowlisted URLs** — All external URLs are defined in `src/config/chains.ts`; the app only connects to those origins.
+- **Static frontend** — The shipped UI is a client-only bundle (`dist/`). You can host it on any static file host. An **optional** self-hosted Node + SQLite API (same repo) can back fee averages and ticks; it is not required for basic gas display (see [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)).
+- **No secrets in the client** — The app uses only public endpoints (RPCs, mempool.space, CoinGecko). No API keys are required for those flows.
+- **Allowlisted URLs** — External origins used for gas and prices are defined in `src/config/chains.ts` and related config; the client only connects to those targets for core features.
 - **Content Security Policy** — `index.html` sets a CSP (script, style, connect, font, img) and a strict referrer policy to reduce risk when hosted as a static site.
-- **User data** — Fee averages are stored only in the browser (`localStorage`); nothing is sent to our servers (we have none).
+- **User data** — Preferences, favorites, and similar state stay in the browser unless you opt into features that POST to **your** configured API. Query parameters for shareable views (`chain`, `compare`, etc.) are synchronized client-side; see [docs/PRIVACY.md](docs/PRIVACY.md).
 
 If you depend on this app for critical decisions, consider auditing the code and the third-party services it calls (RPC providers, mempool.space, CoinGecko).

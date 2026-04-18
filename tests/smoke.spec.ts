@@ -113,3 +113,18 @@ test('axe: no serious accessibility violations on home', async ({ page }) => {
     .analyze();
   expect(violations, JSON.stringify(violations, null, 2)).toEqual([]);
 });
+
+test('URL compare= opens compare dialog with listed chains', async ({ page }) => {
+  await page.goto('/?compare=1,8453&lang=en', { waitUntil: 'load', timeout: 60_000 });
+  await page.getByRole('heading', { name: /EVM chains/i }).waitFor({ state: 'visible', timeout: 90_000 });
+  const dialog = page.getByRole('dialog', { name: /Compare chains/i });
+  await expect(dialog).toBeVisible({ timeout: 30_000 });
+  await expect(dialog.getByText('Ethereum', { exact: true })).toBeVisible();
+  await expect(dialog.getByText('Base', { exact: true })).toBeVisible();
+});
+
+test('URL txPreset=nft sets tx estimator gas limit', async ({ page }) => {
+  await page.goto('/?chain=1&txPreset=nft&lang=en', { waitUntil: 'load', timeout: 60_000 });
+  await page.getByRole('heading', { name: /EVM chains/i }).waitFor({ state: 'visible', timeout: 90_000 });
+  await expect(page.getByLabel(/Gas limit/i)).toHaveValue('200000');
+});

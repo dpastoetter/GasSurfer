@@ -21,6 +21,7 @@ import { ChainDetailDrawer } from './components/ChainDetailDrawer';
 import { RefreshIntervalControl } from './components/RefreshIntervalControl';
 import { SurfBandsPanel } from './components/SurfBandsPanel';
 import { useUrlSync, readUrlParams } from './hooks/useUrlSync';
+import type { TxPresetUrl } from './lib/urlQuerySchema';
 import { useFavorites } from './hooks/useFavorites';
 import { useMultiChainSparkHistory } from './hooks/useMultiChainSparkHistory';
 import { useOnboarding } from './hooks/useOnboarding';
@@ -87,8 +88,15 @@ function App() {
   }, [online, liveChains]);
 
   const sparkHistory = useMultiChainSparkHistory(displayChains);
-  const [compareIds, setCompareIds] = useState<number[]>([]);
-  const [compareOpen, setCompareOpen] = useState(false);
+  const [compareIds, setCompareIds] = useState<number[]>(() => urlSnap.compareIds);
+  const [compareOpen, setCompareOpen] = useState(() => urlSnap.compareIds.length > 0);
+  const [txPresetUrl, setTxPresetUrl] = useState<TxPresetUrl | null>(() => urlSnap.txPreset);
+
+  const compareIdsForUrl = useMemo(() => {
+    if (displayChains.length === 0) return compareIds;
+    const valid = new Set(displayChains.map((c) => c.chainId));
+    return compareIds.filter((id) => valid.has(id));
+  }, [compareIds, displayChains]);
   const [learnOpen, setLearnOpen] = useState(false);
   const [weeklyOpen, setWeeklyOpen] = useState(false);
   const [detailChainId, setDetailChainId] = useState<number | null>(null);
@@ -113,7 +121,7 @@ function App() {
     return displayChains.some((c) => c.chainId === selectedChainId) ? selectedChainId : displayChains[0].chainId;
   }, [displayChains, selectedChainId]);
 
-  useUrlSync(effectiveChainId, currency, locale);
+  useUrlSync(effectiveChainId, currency, locale, compareIdsForUrl, txPresetUrl);
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', theme === 'dark');
@@ -183,9 +191,12 @@ function App() {
 
   const toggleCompare = (chainId: number) => {
     setCompareIds((prev) => {
-      if (prev.includes(chainId)) return prev.filter((id) => id !== chainId);
-      if (prev.length >= 3) return prev;
-      return [...prev, chainId];
+      const valid =
+        displayChains.length > 0 ? new Set(displayChains.map((c) => c.chainId)) : null;
+      const base = valid != null ? prev.filter((id) => valid.has(id)) : [...prev];
+      if (base.includes(chainId)) return base.filter((id) => id !== chainId);
+      if (base.length >= 3) return base;
+      return [...base, chainId];
     });
   };
 
@@ -213,7 +224,7 @@ function App() {
           open={compareOpen}
           onClose={() => setCompareOpen(false)}
           chains={displayChains}
-          compareIds={compareIds}
+          compareIds={compareIdsForUrl}
           prices={prices}
           currency={currency}
         />
@@ -224,18 +235,6 @@ function App() {
         open={detailChain != null}
         onClose={() => setDetailChainId(null)}
       />
-
-      <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute bottom-0 left-0 right-0 h-48 wave-overlay" />
-        <div
-          className="absolute bottom-0 left-0 w-[200%] h-32 wave-orb rounded-[50%] animate-wave"
-          style={{ animation: 'wave 8s ease-in-out infinite' }}
-        />
-        <div
-          className="absolute bottom-2 left-0 w-[180%] h-24 wave-orb-slow rounded-[50%]"
-          style={{ animation: 'wave-slow 12s ease-in-out infinite' }}
-        />
-      </div>
 
       <main
         id="main-content"
@@ -270,7 +269,7 @@ function App() {
               onClick={() => setCompareOpen(true)}
               className="rounded-xl glass border border-slate-300/50 dark:border-white/20 px-3 py-2.5 text-sm font-medium text-slate-600 dark:text-surf-200 hover:bg-slate-200/50 dark:hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-surf-400/50"
             >
-              {ti('compareOpen', { n: compareIds.length })}
+              {ti('compareOpen', { n: compareIdsForUrl.length })}
             </button>
             <button
               type="button"
@@ -364,6 +363,8 @@ function App() {
               coinGeckoId={getCoinGeckoId(primary?.chainId ?? 1)}
               prices={prices}
               currency={currency}
+              urlTxPreset={txPresetUrl}
+              onUrlTxPresetChange={setTxPresetUrl}
             />
             <section className="mb-12 md:mb-16">
               <div className="glass-strong rounded-3xl p-8 md:p-12 border border-slate-200/50 dark:border-white/10 shadow-2xl">
@@ -402,7 +403,7 @@ function App() {
                   sparkHistory={sparkHistory}
                   isFavorite={isFavorite}
                   onToggleFavorite={toggleFavorite}
-                  compareIds={compareIds}
+                  compareIds={compareIdsForUrl}
                   onToggleCompare={toggleCompare}
                   onOpenDetail={setDetailChainId}
                 />
@@ -419,7 +420,7 @@ function App() {
                   sparkHistory={sparkHistory}
                   isFavorite={isFavorite}
                   onToggleFavorite={toggleFavorite}
-                  compareIds={compareIds}
+                  compareIds={compareIdsForUrl}
                   onToggleCompare={toggleCompare}
                   onOpenDetail={setDetailChainId}
                 />
@@ -441,8 +442,8 @@ function App() {
                     sparkValues={sparkHistory[chain.chainId]}
                     isFavorite={isFavorite(chain.chainId)}
                     onToggleFavorite={() => toggleFavorite(chain.chainId)}
-                    compareSelected={compareIds.includes(chain.chainId)}
-                    compareDisabled={compareIds.length >= 3}
+                    compareSelected={compareIdsForUrl.includes(chain.chainId)}
+                    compareDisabled={compareIdsForUrl.length >= 3}
                     onToggleCompare={() => toggleCompare(chain.chainId)}
                     onOpenDetail={() => setDetailChainId(chain.chainId)}
                   />

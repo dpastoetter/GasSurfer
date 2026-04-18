@@ -20,6 +20,10 @@ There is **no login**, no wallet connection, and **no personally identifiable in
 - **localStorage / IndexedDB** — theme, locale, favorites, alert thresholds, onboarding flag, optional gas snapshot cache, optional custom surf bands, and local fee history samples for the weekly recap.
 - **Clipboard** — only when you explicitly copy a fee or JSON snapshot.
 
+## Shareable links (address bar)
+
+Query parameters such as `chain`, `currency`, `lang`, `compare`, and `txPreset` are **read and written only in your browser** (`history.replaceState`). They are not sent to Gas Surfer as telemetry (the default deployment has no first-party analytics). Anyone you share the URL with can see the same encoded preferences; avoid putting sensitive information in URLs in general. Invalid or unsupported values are ignored or stripped client-side (see [DEVELOPMENT.md](DEVELOPMENT.md#shareable-url-state)).
+
 ## Optional tick reporting
 
 If enabled in your build or deployment, the app may **POST anonymized fee snapshots** to your configured API. That payload reflects **public fee numbers** already shown on screen, not wallet addresses or transactions.

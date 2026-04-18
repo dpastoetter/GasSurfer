@@ -21,11 +21,6 @@
   --color-gold: #ffd54f;
 }
 
-@keyframes wave {
-  0%, 100% { transform: translateX(0) translateZ(0) scaleY(1); }
-  50% { transform: translateX(-25%) translateZ(0) scaleY(1.1); }
-}
-
 @keyframes float {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-8px); }
@@ -43,24 +38,10 @@
 
 .wave-bg {
   background: linear-gradient(180deg, #e0f7fa 0%, #b2ebf2 30%, #80deea 60%, #4dd0e1 100%);
-  background-size: 400% 400%;
-  animation: gradient-shift 15s ease infinite;
 }
 
 .dark .wave-bg {
   background: linear-gradient(180deg, #011118 0%, #021a26 30%, #032535 55%, #043a4a 80%, #054a5e 100%);
-  background-size: 400% 400%;
-  animation: gradient-shift 15s ease infinite;
-}
-
-@keyframes gradient-shift {
-  0%, 100% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-}
-
-@keyframes wave-slow {
-  0%, 100% { transform: translateX(0) translateZ(0) scaleY(1); }
-  50% { transform: translateX(15%) translateZ(0) scaleY(1.05); }
 }
 
 @keyframes fade-in {
@@ -98,31 +79,6 @@
 
 .animate-float {
   animation: float 3s ease-in-out infinite;
-}
-
-/* Wave overlay: light mode uses subtle tint */
-.wave-overlay {
-  background: linear-gradient(to top, rgba(77, 208, 225, 0.15), transparent);
-}
-
-.dark .wave-overlay {
-  background: linear-gradient(to top, rgba(5, 74, 94, 0.25), transparent);
-}
-
-.wave-orb {
-  background: rgba(77, 208, 225, 0.12);
-}
-
-.dark .wave-orb {
-  background: rgba(4, 58, 74, 0.2);
-}
-
-.wave-orb-slow {
-  background: rgba(38, 194, 223, 0.1);
-}
-
-.dark .wave-orb-slow {
-  background: rgba(5, 74, 94, 0.25);
 }
 
 @media (prefers-reduced-motion: no-preference) {

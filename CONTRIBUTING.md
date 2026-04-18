@@ -43,7 +43,9 @@ npm ci
    BASE_URL=http://127.0.0.1:5173 SCREENSHOT_WAIT=15000 npm run screenshot
    ```
 
-   Adjust `BASE_URL` to match your dev/preview URL.
+   Adjust `BASE_URL` to match your dev/preview URL. If Playwright gets `ECONNREFUSED` while Vite is running, start Vite with an explicit bind, e.g. `npx vite --host 127.0.0.1 --strictPort`, then use that host in `BASE_URL` (see [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md#regenerating-screenshots)).
+
+4. Commit updated files under `docs/screenshots/` when refreshing README imagery.
 
 ## Checks before a PR
 
@@ -55,12 +57,13 @@ npm run test:e2e
 ```
 
 - **`npm run test`** — Vitest (includes optional API contract checks against `server/app.js`).
-- **`npm run test:e2e`** — Playwright against a production preview; the web server is started automatically (see [playwright.config.ts](playwright.config.ts)). Smoke tests **mock** external RPC, mempool.space, and CoinGecko so CI stays deterministic.
+- **`npm run test:e2e`** — Playwright against a production preview; the web server is started automatically (see [playwright.config.ts](playwright.config.ts)). Smoke tests **mock** external RPC, mempool.space, and CoinGecko so CI stays deterministic. Includes cases for **URL hydration** (`compare=`, `txPreset=`).
 - **First-time Playwright:** run `npx playwright install chromium` (or `npx playwright install`) so the browser binary exists. In constrained environments, set `PLAYWRIGHT_BROWSERS_PATH` to a writable cache directory (see Screenshots above).
 
 ## Project layout (short)
 
-- [src/App.tsx](src/App.tsx) — main shell, URL sync, modals.
+- [src/App.tsx](src/App.tsx) — main shell, URL sync (`useUrlSync`), compare / tx-preset hydration, modals.
+- [src/hooks/useUrlSync.ts](src/hooks/useUrlSync.ts) / [src/lib/urlQuerySchema.ts](src/lib/urlQuerySchema.ts) — shareable query string (`chain`, `currency`, `lang`, `compare`, `txPreset`).
 - [src/useGasPrices.ts](src/useGasPrices.ts) — RPC + mempool fetching.
 - [server/](server/) — optional Express + SQLite API (samples, averages, fee ticks, snapshot JSON).
 

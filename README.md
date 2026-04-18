@@ -6,7 +6,7 @@
 
 ### Screenshots
 
-_Regenerated with `npm run screenshot` while the dev server is running (see [Pushing to GitHub](#pushing-to-github))._
+_Regenerated April 2026 with `npm run screenshot` (dev server running; see [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md#regenerating-screenshots) and [Pushing to GitHub](#pushing-to-github))._
 
 | Desktop hero (1280×800) | Mobile (390×844) | Full page |
 |------------------------|------------------|-----------|
@@ -28,9 +28,9 @@ _Regenerated with `npm run screenshot` while the dev server is running (see [Pus
 - **Skeleton loading** — Layout placeholders while gas data loads
 - **Copy fee** — One-click copy of the current chain’s standard fee
 - **Auto-refresh** — Gas ~12s, prices ~1 min. No API keys required for the frontend.
-- **Favorites & compare** — Star chains (pinned order), compare up to three side-by-side with freshness/source hints
+- **Favorites & compare** — Star chains (pinned order), compare up to three side-by-side with freshness/source hints; **shareable URLs** keep `compare=` (and related query params) in sync via `replaceState` ([URL parameters](#url-parameters-shareable-links))
 - **Learn & tour** — Learn drawer (gwei / L2 / Bitcoin) and optional first-visit onboarding
-- **Tx estimator** — Rough fee for preset gas limits on the selected EVM chain (+ fiat)
+- **Tx estimator** — Rough fee for preset gas limits on the selected EVM chain (+ fiat); optional **`txPreset=`** in the URL opens with matching gas (see [URL parameters](#url-parameters-shareable-links))
 - **Card sparklines** — Tiny recent standard-fee trends on chain cards
 - **Share & recap** — PNG snapshot (share or download) and a local-only weekly recap (IndexedDB samples)
 - **Trust cues** — Per-chain data age and RPC / mempool source label
@@ -50,6 +50,20 @@ npm run dev
 ```
 
 Open [http://localhost:5173](http://localhost:5173) (or the port Vite prints if 5173 is in use).
+
+### URL parameters (shareable links)
+
+The address bar stays in sync with core UI state (no extra history entries). Useful for bookmarks or sharing a specific view.
+
+| Parameter   | Example | Meaning |
+|------------|---------|---------|
+| `chain`    | `chain=1` | Selected chain ID (e.g. `1` Ethereum, `0` Bitcoin, `8453` Base). |
+| `currency` | `currency=eur` | Fiat display: `usd`, `eur`, `gbp`, `jpy`, `chf`, `cad`, `aud`. |
+| `lang`     | `lang=de` | UI language: `en`, `de`, `es`. |
+| `compare`  | `compare=1,8453` | Up to **three** allowlisted chain IDs for the compare dialog (invalid or unknown IDs are ignored once data loads). |
+| `txPreset` | `txPreset=nft` | Tx estimator preset: `erc20`, `nft`, or `swap` (gas limit); cleared when the user edits the gas field manually. |
+
+Implementation: [`src/hooks/useUrlSync.ts`](src/hooks/useUrlSync.ts), [`src/lib/urlQuerySchema.ts`](src/lib/urlQuerySchema.ts). Details for contributors: [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md#shareable-url-state).
 
 **Optional — fee averages from a backend (SQLite):**
 
@@ -120,7 +134,7 @@ From `gas-surfer`: `npm run lint`, `npm run test`, `npm run build`, then `npm ru
 
 - Run `npm run lint`, `npm run test`, `npm run build`, and (when possible) `npm run test:e2e` in `gas-surfer` before pushing.
 - The repo can be the `gas-surfer` folder only, or the parent folder (with root `package.json` that delegates to `gas-surfer`). Ensure `.gitignore` excludes `node_modules`, `dist`, and `server/gas-surfer.db`.
-- Screenshots in `docs/screenshots/` are tracked in git. To refresh them: start the app, then `npx playwright install chromium` (once), then `npm run screenshot`. See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md#regenerating-screenshots).
+- Screenshots in `docs/screenshots/` are tracked in git. To refresh them: install Chromium once (`npx playwright install chromium`), start the dev server, then `npm run screenshot` (set `BASE_URL` / `SCREENSHOT_WAIT` if needed). On some hosts Playwright needs Vite bound to IPv4 — see [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md#regenerating-screenshots).
 
 ---
 

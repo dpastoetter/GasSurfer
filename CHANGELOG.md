@@ -8,6 +8,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **Shareable URLs:** `compare=` (up to three allowlisted chain IDs) and `txPreset=` (`erc20` \| `nft` \| `swap`) in the query string; hydration on load; `history.replaceState` sync from [`useUrlSync`](src/hooks/useUrlSync.ts). Parsers and allowlist in [`urlQuerySchema`](src/lib/urlQuerySchema.ts). Playwright smoke coverage for compare dialog and estimator gas limit.
+- Documentation: README **URL parameters** table; [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) **Shareable URL state**; CONTRIBUTING screenshot troubleshooting; refreshed [docs/screenshots/](docs/screenshots/) (hero / full / mobile).
 - RPC transparency: `fetchMeta` (attempt count + winning host) on `ChainGas`, detail drawer highlights, DataFreshness hints.
 - `GET /api/ticks/recent` for optional server-side fee history; mini chart blends recent ticks when the API returns data.
 - Offline UX: last successful gas snapshot saved in `localStorage`; when offline, the UI can show that snapshot with a clear banner.

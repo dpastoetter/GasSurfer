@@ -3,11 +3,13 @@ import type { ChainGas, Currency } from '../types';
 import { formatGwei, gasCostInToken, formatFiat, feeUnitLabel } from '../types';
 import { getPriceInCurrency } from '../useTokenPrices';
 import { useI18n } from '../i18n/I18nContext';
+import type { TxPresetUrl } from '../lib/urlQuerySchema';
+import { TX_PRESET_GAS_LIMIT } from '../lib/urlQuerySchema';
 
-const PRESETS: { key: string; gas: number }[] = [
-  { key: 'txPresetErc20', gas: 65_000 },
-  { key: 'txPresetNft', gas: 200_000 },
-  { key: 'txPresetSwap', gas: 180_000 },
+const PRESETS: { key: string; gas: number; urlKey: TxPresetUrl }[] = [
+  { key: 'txPresetErc20', gas: 65_000, urlKey: 'erc20' },
+  { key: 'txPresetNft', gas: 200_000, urlKey: 'nft' },
+  { key: 'txPresetSwap', gas: 180_000, urlKey: 'swap' },
 ];
 
 interface TxEstimatorPanelProps {
@@ -15,11 +17,25 @@ interface TxEstimatorPanelProps {
   coinGeckoId: string;
   prices: Record<string, Partial<Record<Currency, number>>>;
   currency: Currency;
+  /** Synced to `?txPreset=` when user picks a preset; cleared when gas is edited manually. */
+  urlTxPreset?: TxPresetUrl | null;
+  onUrlTxPresetChange?: (preset: TxPresetUrl | null) => void;
 }
 
-export function TxEstimatorPanel({ chain, coinGeckoId, prices, currency }: TxEstimatorPanelProps) {
+export function TxEstimatorPanel({
+  chain,
+  coinGeckoId,
+  prices,
+  currency,
+  urlTxPreset = null,
+  onUrlTxPresetChange,
+}: TxEstimatorPanelProps) {
   const { t } = useI18n();
-  const [gasLimit, setGasLimit] = useState(150_000);
+  const defaultFromUrl =
+    urlTxPreset != null ? TX_PRESET_GAS_LIMIT[urlTxPreset] : 150_000;
+  const [hasManualGas, setHasManualGas] = useState(false);
+  const [manualGasLimit, setManualGasLimit] = useState(150_000);
+  const gasLimit = hasManualGas ? manualGasLimit : defaultFromUrl;
 
   const { token, fiat } = useMemo(() => {
     if (!chain || chain.chainId === 0) return { token: null as number | null, fiat: null as number | null };
@@ -41,7 +57,10 @@ export function TxEstimatorPanel({ chain, coinGeckoId, prices, currency }: TxEst
           <button
             key={p.key}
             type="button"
-            onClick={() => setGasLimit(p.gas)}
+            onClick={() => {
+              setHasManualGas(false);
+              onUrlTxPresetChange?.(p.urlKey);
+            }}
             className="rounded-lg border border-slate-300/50 dark:border-white/20 px-2 py-1 text-xs text-slate-700 dark:text-surf-200 hover:bg-slate-200/40 dark:hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-surf-400/50"
           >
             {t(p.key as 'txPresetErc20')}
@@ -55,7 +74,13 @@ export function TxEstimatorPanel({ chain, coinGeckoId, prices, currency }: TxEst
           min={21_000}
           step={1000}
           value={gasLimit}
-          onChange={(e) => setGasLimit(Math.max(21_000, parseInt(e.target.value, 10) || 21_000))}
+          onChange={(e) => {
+            const v = Math.max(21_000, parseInt(e.target.value, 10) || 21_000);
+            setHasManualGas(true);
+            setManualGasLimit(v);
+            onUrlTxPresetChange?.(null);
+          }}
+          aria-label={t('txGasLimit')}
           className="w-28 rounded-lg border border-slate-300/50 dark:border-white/20 bg-white/80 dark:bg-surf-900/40 px-2 py-1 text-slate-800 dark:text-white"
         />
       </label>
