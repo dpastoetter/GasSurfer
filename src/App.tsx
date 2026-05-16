@@ -20,7 +20,11 @@ import { ShareSnapshotButton } from './components/ShareSnapshotButton';
 import { ChainDetailDrawer } from './components/ChainDetailDrawer';
 import { RefreshIntervalControl } from './components/RefreshIntervalControl';
 import { SurfBandsPanel } from './components/SurfBandsPanel';
+import { ConditionTransitionToast } from './components/ConditionTransitionToast';
+import { TideTablePanel } from './components/TideTablePanel';
 import { useUrlSync, readUrlParams } from './hooks/useUrlSync';
+import { useConditionTransition } from './hooks/useConditionTransition';
+import { useRecapNudge, dismissRecapNudgeForWeek } from './hooks/useRecapNudge';
 import type { TxPresetUrl } from './lib/urlQuerySchema';
 import { useFavorites } from './hooks/useFavorites';
 import { useMultiChainSparkHistory } from './hooks/useMultiChainSparkHistory';
@@ -102,6 +106,8 @@ function App() {
   const [detailChainId, setDetailChainId] = useState<number | null>(null);
   const [jsonCopied, setJsonCopied] = useState(false);
   const { onboardingOpen, dismissOnboarding, reopenOnboarding, tourKey } = useOnboarding();
+  const widgetMode = urlSnap.widget;
+  const recapNudge = useRecapNudge();
 
   const onCopyJsonSnapshot = useCallback(async () => {
     if (displayChains.length === 0) return;
@@ -135,6 +141,7 @@ function App() {
   const primary = displayChains.find((c) => c.chainId === effectiveChainId) ?? displayChains[0];
   const { values: chartValues, hasServerBlend } = useMergedChartHistory(primary, CHART_HISTORY_SIZE);
   const delightBurst = useDelightSurfsUp(primary, primary ? isFavorite(primary.chainId) : false);
+  const { toast: conditionToast, dismiss: dismissConditionToast } = useConditionTransition(primary);
 
   const bitcoin = displayChains.find((c) => c.chainId === 0);
   const ethereum = displayChains.find((c) => c.chainId === 1);
@@ -215,10 +222,145 @@ function App() {
   const cachedForOfflineBanner = loadGasSnapshotCache();
   const offlineUsingCache = !online && cachedForOfflineBanner != null && displayChains.length > 0;
 
+  const loadedContent = (
+    <>
+      {conditionToast && (
+        <ConditionTransitionToast toast={conditionToast} onDismiss={dismissConditionToast} />
+      )}
+      {!widgetMode && <FeeAlertsPanel chain={primary} />}
+      {!widgetMode && (
+        <TxEstimatorPanel
+          chain={primary}
+          coinGeckoId={getCoinGeckoId(primary?.chainId ?? 1)}
+          prices={prices}
+          currency={currency}
+          urlTxPreset={txPresetUrl}
+          onUrlTxPresetChange={setTxPresetUrl}
+        />
+      )}
+      <section className="mb-12 md:mb-16">
+        <div className="glass-strong rounded-3xl p-8 md:p-12 border border-slate-200/50 dark:border-white/10 shadow-2xl">
+          {primary && (
+            <SurfReport
+              condition={primary.condition}
+              gwei={primary.gas.standard}
+              chainName={primary.name}
+              chainId={primary.chainId}
+              coinGeckoId={getCoinGeckoId(primary.chainId)}
+              prices={prices}
+              currency={currency}
+              feeAverages={feeAverages[primary.chainId]}
+              eip1559={primary.eip1559}
+              bitcoinExtras={primary.bitcoinExtras}
+              wrapperClassName={delightBurst ? 'surfs-up-burst' : ''}
+              onOpenLearnStandard={() => setLearnOpen(true)}
+            />
+          )}
+        </div>
+      </section>
+      {primary && chartValues.length >= 2 && (
+        <section className="mb-10" aria-labelledby="trend-heading">
+          <h2 id="trend-heading" className="font-display text-2xl tracking-wider text-surf-700 dark:text-surf-200 mb-4">
+            {t('recentTrend')} · {primary.name}
+          </h2>
+          <div className="flex flex-col items-center gap-2">
+            <MiniChart
+              values={chartValues}
+              label={ti('chartTrendLabel', { unit: feeUnitLabel(primary.chainId), n: chartValues.length })}
+              referenceValue={feeAverages[primary.chainId]?.avg7d}
+            />
+            {hasServerBlend && !widgetMode && (
+              <p className="text-xs text-center text-slate-500 dark:text-white/45 max-w-md">{t('chartBlendsServer')}</p>
+            )}
+          </div>
+        </section>
+      )}
+      {widgetMode && (
+        <p className="text-center text-xs text-slate-500 dark:text-white/45 mb-8 max-w-md mx-auto">{t('widgetModeHint')}</p>
+      )}
+      {!widgetMode && (
+        <>
+          <section className="mb-10">
+            <NetworkSummaryStrip chains={displayChains} prices={prices} currency={currency} />
+            <TideTablePanel />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6 mb-10">
+              <FeaturedChainWidget
+                chain={bitcoin ?? null}
+                title={t('bitcoinTitle')}
+                theme="bitcoin"
+                selectedChainId={effectiveChainId}
+                onSelectChain={setSelectedChainId}
+                prices={prices}
+                currency={currency}
+                feeAverages={bitcoin ? feeAverages[bitcoin.chainId] : undefined}
+                isCheapest={cheapestChain?.chainId === bitcoin?.chainId}
+                sparkHistory={sparkHistory}
+                isFavorite={isFavorite}
+                onToggleFavorite={toggleFavorite}
+                compareIds={compareIdsForUrl}
+                onToggleCompare={toggleCompare}
+                onOpenDetail={setDetailChainId}
+              />
+              <FeaturedChainWidget
+                chain={ethereum ?? null}
+                title={t('ethereumTitle')}
+                theme="ethereum"
+                selectedChainId={effectiveChainId}
+                onSelectChain={setSelectedChainId}
+                prices={prices}
+                currency={currency}
+                feeAverages={ethereum ? feeAverages[ethereum.chainId] : undefined}
+                isCheapest={cheapestChain?.chainId === ethereum?.chainId}
+                sparkHistory={sparkHistory}
+                isFavorite={isFavorite}
+                onToggleFavorite={toggleFavorite}
+                compareIds={compareIdsForUrl}
+                onToggleCompare={toggleCompare}
+                onOpenDetail={setDetailChainId}
+              />
+            </div>
+            <h2 className="font-display text-2xl tracking-wider text-surf-700 dark:text-surf-200 mb-4">{t('evmChains')}</h2>
+            <EvmChainToolbar search={evmSearch} onSearchChange={setEvmSearch} sort={evmSort} onSortChange={setEvmSort} />
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {orderedEvmChains.map((chain) => (
+                <ChainCard
+                  key={chain.chainId}
+                  chain={chain}
+                  coinGeckoId={getCoinGeckoId(chain.chainId)}
+                  prices={prices}
+                  currency={currency}
+                  feeAverages={feeAverages[chain.chainId]}
+                  isPrimary={chain.chainId === effectiveChainId}
+                  isCheapest={cheapestChain?.chainId === chain.chainId}
+                  onClick={() => setSelectedChainId(chain.chainId)}
+                  sparkValues={sparkHistory[chain.chainId]}
+                  isFavorite={isFavorite(chain.chainId)}
+                  onToggleFavorite={() => toggleFavorite(chain.chainId)}
+                  compareSelected={compareIdsForUrl.includes(chain.chainId)}
+                  compareDisabled={compareIdsForUrl.length >= 3}
+                  onToggleCompare={() => toggleCompare(chain.chainId)}
+                  onOpenDetail={() => setDetailChainId(chain.chainId)}
+                />
+              ))}
+            </div>
+          </section>
+          <SurfBandsPanel chains={displayChains} onBandsSaved={() => void refetch()} />
+          <footer className="text-center text-slate-500 dark:text-white/40 text-sm space-y-2">
+            <p>{t('footerNote')}</p>
+            <p className="text-xs max-w-lg mx-auto leading-relaxed">{t('footerBridgeNote')}</p>
+          </footer>
+        </>
+      )}
+    </>
+  );
+
   return (
-    <div className="min-h-screen wave-bg text-slate-800 dark:text-white font-sans transition-colors duration-300">
+    <div
+      className="min-h-screen wave-bg text-slate-800 dark:text-white font-sans transition-colors duration-300"
+      data-widget={widgetMode ? 'true' : undefined}
+    >
       <Suspense fallback={null}>
-        <OnboardingTour key={tourKey} open={onboardingOpen} onDismiss={dismissOnboarding} />
+        <OnboardingTour key={tourKey} open={onboardingOpen && !widgetMode} onDismiss={dismissOnboarding} />
         <LearnDrawer open={learnOpen} onClose={() => setLearnOpen(false)} />
         <ComparePanel
           open={compareOpen}
@@ -240,55 +382,72 @@ function App() {
         id="main-content"
         className="relative z-10 max-w-6xl mx-auto px-4 py-8 md:py-12 pb-[max(1.5rem,env(safe-area-inset-bottom,0px))]"
       >
-        <header className="text-center mb-10 md:mb-14">
-          <h1 className="font-display text-6xl md:text-8xl tracking-[0.2em] text-slate-800 dark:text-white drop-shadow-lg mb-2">
+        <header className={`text-center ${widgetMode ? 'mb-6 md:mb-8' : 'mb-10 md:mb-14'}`}>
+          <h1
+            className={`font-display tracking-[0.2em] text-slate-800 dark:text-white drop-shadow-lg mb-2 ${
+              widgetMode ? 'text-4xl md:text-5xl' : 'text-6xl md:text-8xl'
+            }`}
+          >
             {t('appTitle')}
           </h1>
-          <p className="text-surf-600 dark:text-surf-300 text-lg md:text-xl tracking-widest uppercase">{t('tagline')}</p>
+          {!widgetMode && (
+            <p className="text-surf-600 dark:text-surf-300 text-lg md:text-xl tracking-widest uppercase">{t('tagline')}</p>
+          )}
           <div className="flex flex-wrap items-center justify-center gap-4 mt-4">
             <ThemeToggle theme={theme} onToggle={() => setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'))} />
             <LocaleSelector />
             <CurrencySelector value={currency} onChange={setCurrency} />
-            <RefreshIntervalControl value={refreshIntervalMs} onChange={setRefreshIntervalMs} />
-            <button
-              type="button"
-              onClick={() => setLearnOpen(true)}
-              className="rounded-xl glass border border-slate-300/50 dark:border-white/20 px-3 py-2.5 text-sm font-medium text-slate-600 dark:text-surf-200 hover:bg-slate-200/50 dark:hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-surf-400/50"
-            >
-              {t('learnOpen')}
-            </button>
-            <button
-              type="button"
-              onClick={reopenOnboarding}
-              className="rounded-xl glass border border-slate-300/50 dark:border-white/20 px-3 py-2.5 text-sm font-medium text-slate-600 dark:text-surf-200 hover:bg-slate-200/50 dark:hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-surf-400/50"
-            >
-              {t('helpTour')}
-            </button>
-            <button
-              type="button"
-              onClick={() => setCompareOpen(true)}
-              className="rounded-xl glass border border-slate-300/50 dark:border-white/20 px-3 py-2.5 text-sm font-medium text-slate-600 dark:text-surf-200 hover:bg-slate-200/50 dark:hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-surf-400/50"
-            >
-              {ti('compareOpen', { n: compareIdsForUrl.length })}
-            </button>
-            <button
-              type="button"
-              onClick={() => setWeeklyOpen(true)}
-              className="rounded-xl glass border border-slate-300/50 dark:border-white/20 px-3 py-2.5 text-sm font-medium text-slate-600 dark:text-surf-200 hover:bg-slate-200/50 dark:hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-surf-400/50"
-            >
-              {t('weeklyOpen')}
-            </button>
-            {!loading && displayChains.length > 0 && (
-              <ShareSnapshotButton chain={primary} coinGeckoId={getCoinGeckoId(primary?.chainId ?? 1)} prices={prices} currency={currency} />
-            )}
-            {!loading && displayChains.length > 0 && (
-              <button
-                type="button"
-                onClick={() => void onCopyJsonSnapshot()}
-                className="rounded-xl glass border border-slate-300/50 dark:border-white/20 px-3 py-2.5 text-sm font-medium text-slate-600 dark:text-surf-200 hover:bg-slate-200/50 dark:hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-surf-400/50"
-              >
-                {jsonCopied ? `✓ ${t('copyJsonDone')}` : t('copyJson')}
-              </button>
+            {!widgetMode && <RefreshIntervalControl value={refreshIntervalMs} onChange={setRefreshIntervalMs} />}
+            {!widgetMode && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setLearnOpen(true)}
+                  className="rounded-xl glass border border-slate-300/50 dark:border-white/20 px-3 py-2.5 text-sm font-medium text-slate-600 dark:text-surf-200 hover:bg-slate-200/50 dark:hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-surf-400/50"
+                >
+                  {t('learnOpen')}
+                </button>
+                <button
+                  type="button"
+                  onClick={reopenOnboarding}
+                  className="rounded-xl glass border border-slate-300/50 dark:border-white/20 px-3 py-2.5 text-sm font-medium text-slate-600 dark:text-surf-200 hover:bg-slate-200/50 dark:hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-surf-400/50"
+                >
+                  {t('helpTour')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCompareOpen(true)}
+                  className="rounded-xl glass border border-slate-300/50 dark:border-white/20 px-3 py-2.5 text-sm font-medium text-slate-600 dark:text-surf-200 hover:bg-slate-200/50 dark:hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-surf-400/50"
+                >
+                  {ti('compareOpen', { n: compareIdsForUrl.length })}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    dismissRecapNudgeForWeek();
+                    setWeeklyOpen(true);
+                  }}
+                  className="relative rounded-xl glass border border-slate-300/50 dark:border-white/20 px-3 py-2.5 text-sm font-medium text-slate-600 dark:text-surf-200 hover:bg-slate-200/50 dark:hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-surf-400/50"
+                >
+                  {t('weeklyOpen')}
+                  {recapNudge && (
+                    <span
+                      className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-surf-400 ring-2 ring-white dark:ring-deep-950"
+                      aria-label={t('recapNudgeAria')}
+                    />
+                  )}
+                </button>
+                {!loading && displayChains.length > 0 && (
+                  <ShareSnapshotButton chain={primary} coinGeckoId={getCoinGeckoId(primary?.chainId ?? 1)} prices={prices} currency={currency} />
+                )}
+                <button
+                  type="button"
+                  onClick={() => void onCopyJsonSnapshot()}
+                  className="rounded-xl glass border border-slate-300/50 dark:border-white/20 px-3 py-2.5 text-sm font-medium text-slate-600 dark:text-surf-200 hover:bg-slate-200/50 dark:hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-surf-400/50"
+                >
+                  {jsonCopied ? `✓ ${t('copyJsonDone')}` : t('copyJson')}
+                </button>
+              </>
             )}
             {!loading && displayChains.length > 0 && (
               <>
@@ -307,7 +466,7 @@ function App() {
               </>
             )}
           </div>
-          {bestDealLine}
+          {!widgetMode && bestDealLine}
         </header>
 
         {offlineUsingCache && cachedForOfflineBanner && (
@@ -357,123 +516,7 @@ function App() {
           </div>
         ) : (
           <div className="animate-in fade-in duration-500" key="loaded">
-            <FeeAlertsPanel chain={primary} />
-            <TxEstimatorPanel
-              chain={primary}
-              coinGeckoId={getCoinGeckoId(primary?.chainId ?? 1)}
-              prices={prices}
-              currency={currency}
-              urlTxPreset={txPresetUrl}
-              onUrlTxPresetChange={setTxPresetUrl}
-            />
-            <section className="mb-12 md:mb-16">
-              <div className="glass-strong rounded-3xl p-8 md:p-12 border border-slate-200/50 dark:border-white/10 shadow-2xl">
-                {primary && (
-                  <SurfReport
-                    condition={primary.condition}
-                    gwei={primary.gas.standard}
-                    chainName={primary.name}
-                    chainId={primary.chainId}
-                    coinGeckoId={getCoinGeckoId(primary.chainId)}
-                    prices={prices}
-                    currency={currency}
-                    feeAverages={feeAverages[primary.chainId]}
-                    eip1559={primary.eip1559}
-                    bitcoinExtras={primary.bitcoinExtras}
-                    wrapperClassName={delightBurst ? 'surfs-up-burst' : ''}
-                    onOpenLearnStandard={() => setLearnOpen(true)}
-                  />
-                )}
-              </div>
-            </section>
-
-            <section className="mb-10">
-              <NetworkSummaryStrip chains={displayChains} prices={prices} currency={currency} />
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6 mb-10">
-                <FeaturedChainWidget
-                  chain={bitcoin ?? null}
-                  title={t('bitcoinTitle')}
-                  theme="bitcoin"
-                  selectedChainId={effectiveChainId}
-                  onSelectChain={setSelectedChainId}
-                  prices={prices}
-                  currency={currency}
-                  feeAverages={bitcoin ? feeAverages[bitcoin.chainId] : undefined}
-                  isCheapest={cheapestChain?.chainId === bitcoin?.chainId}
-                  sparkHistory={sparkHistory}
-                  isFavorite={isFavorite}
-                  onToggleFavorite={toggleFavorite}
-                  compareIds={compareIdsForUrl}
-                  onToggleCompare={toggleCompare}
-                  onOpenDetail={setDetailChainId}
-                />
-                <FeaturedChainWidget
-                  chain={ethereum ?? null}
-                  title={t('ethereumTitle')}
-                  theme="ethereum"
-                  selectedChainId={effectiveChainId}
-                  onSelectChain={setSelectedChainId}
-                  prices={prices}
-                  currency={currency}
-                  feeAverages={ethereum ? feeAverages[ethereum.chainId] : undefined}
-                  isCheapest={cheapestChain?.chainId === ethereum?.chainId}
-                  sparkHistory={sparkHistory}
-                  isFavorite={isFavorite}
-                  onToggleFavorite={toggleFavorite}
-                  compareIds={compareIdsForUrl}
-                  onToggleCompare={toggleCompare}
-                  onOpenDetail={setDetailChainId}
-                />
-              </div>
-              <h2 className="font-display text-2xl tracking-wider text-surf-700 dark:text-surf-200 mb-4">{t('evmChains')}</h2>
-              <EvmChainToolbar search={evmSearch} onSearchChange={setEvmSearch} sort={evmSort} onSortChange={setEvmSort} />
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {orderedEvmChains.map((chain) => (
-                  <ChainCard
-                    key={chain.chainId}
-                    chain={chain}
-                    coinGeckoId={getCoinGeckoId(chain.chainId)}
-                    prices={prices}
-                    currency={currency}
-                    feeAverages={feeAverages[chain.chainId]}
-                    isPrimary={chain.chainId === effectiveChainId}
-                    isCheapest={cheapestChain?.chainId === chain.chainId}
-                    onClick={() => setSelectedChainId(chain.chainId)}
-                    sparkValues={sparkHistory[chain.chainId]}
-                    isFavorite={isFavorite(chain.chainId)}
-                    onToggleFavorite={() => toggleFavorite(chain.chainId)}
-                    compareSelected={compareIdsForUrl.includes(chain.chainId)}
-                    compareDisabled={compareIdsForUrl.length >= 3}
-                    onToggleCompare={() => toggleCompare(chain.chainId)}
-                    onOpenDetail={() => setDetailChainId(chain.chainId)}
-                  />
-                ))}
-              </div>
-            </section>
-
-            {primary && chartValues.length >= 2 && (
-              <section className="mb-10" aria-labelledby="trend-heading">
-                <h2 id="trend-heading" className="font-display text-2xl tracking-wider text-surf-700 dark:text-surf-200 mb-4">
-                  {t('recentTrend')} · {primary.name}
-                </h2>
-                <div className="flex flex-col items-center gap-2">
-                  <MiniChart
-                    values={chartValues}
-                    label={ti('chartTrendLabel', { unit: feeUnitLabel(primary.chainId), n: chartValues.length })}
-                    referenceValue={feeAverages[primary.chainId]?.avg7d}
-                  />
-                  {hasServerBlend && (
-                    <p className="text-xs text-center text-slate-500 dark:text-white/45 max-w-md">{t('chartBlendsServer')}</p>
-                  )}
-                </div>
-              </section>
-            )}
-
-            <SurfBandsPanel chains={displayChains} onBandsSaved={() => void refetch()} />
-            <footer className="text-center text-slate-500 dark:text-white/40 text-sm space-y-2">
-              <p>{t('footerNote')}</p>
-              <p className="text-xs max-w-lg mx-auto leading-relaxed">{t('footerBridgeNote')}</p>
-            </footer>
+            {loadedContent}
           </div>
         )}
       </main>

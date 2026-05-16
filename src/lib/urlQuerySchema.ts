@@ -39,3 +39,10 @@ export function parseTxPresetQueryParam(raw: string | null): TxPresetUrl | null 
   const v = raw.trim().toLowerCase();
   return TX_PRESET_VALUES.includes(v as TxPresetUrl) ? (v as TxPresetUrl) : null;
 }
+
+/** Parse `widget=1` or `widget=true` for compact kiosk layout. */
+export function parseWidgetQueryParam(raw: string | null): boolean {
+  if (raw == null) return false;
+  const v = raw.trim().toLowerCase();
+  return v === '1' || v === 'true' || v === 'yes';
+}

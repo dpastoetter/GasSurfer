@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseCompareQueryParam, parseTxPresetQueryParam } from './urlQuerySchema';
+import { parseCompareQueryParam, parseTxPresetQueryParam, parseWidgetQueryParam } from './urlQuerySchema';
 
 describe('parseCompareQueryParam', () => {
   it('returns empty for null or empty', () => {
@@ -16,5 +16,14 @@ describe('parseTxPresetQueryParam', () => {
   it('accepts erc20 nft swap case-insensitive', () => {
     expect(parseTxPresetQueryParam('ERC20')).toBe('erc20');
     expect(parseTxPresetQueryParam('swap')).toBe('swap');
+  });
+});
+
+describe('parseWidgetQueryParam', () => {
+  it('accepts 1 and true', () => {
+    expect(parseWidgetQueryParam('1')).toBe(true);
+    expect(parseWidgetQueryParam('TRUE')).toBe(true);
+    expect(parseWidgetQueryParam(null)).toBe(false);
+    expect(parseWidgetQueryParam('0')).toBe(false);
   });
 });

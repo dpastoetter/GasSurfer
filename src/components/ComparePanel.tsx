@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, useState, useCallback } from 'react';
 import type { ChainGas, Currency } from '../types';
 import { formatGwei, gasCostInToken, formatFiat, costLabel } from '../types';
 import { getPriceInCurrency } from '../useTokenPrices';
@@ -21,10 +21,22 @@ export function ComparePanel({ open, onClose, chains, compareIds, prices, curren
   const panelRef = useRef<HTMLDivElement>(null);
   useFocusTrap(panelRef, open);
   const { t, locale } = useI18n();
+  const [linkCopied, setLinkCopied] = useState(false);
   const labels = conditionLabels(locale);
   const selected = compareIds
     .map((id) => chains.find((c) => c.chainId === id))
     .filter((c): c is ChainGas => c != null);
+
+  const onCopyLink = useCallback(async () => {
+    if (selected.length === 0) return;
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      setLinkCopied(true);
+      window.setTimeout(() => setLinkCopied(false), 2000);
+    } catch {
+      /* ignore */
+    }
+  }, [selected.length]);
 
   if (!open) return null;
 
@@ -45,13 +57,24 @@ export function ComparePanel({ open, onClose, chains, compareIds, prices, curren
           <h2 id="compare-title" className="font-display text-xl tracking-wide text-slate-900 dark:text-white">
             {t('compareTitle')}
           </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-xl px-3 py-2 text-sm text-slate-600 dark:text-surf-200 hover:bg-slate-200/50 dark:hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-surf-400/50"
-          >
-            {t('compareClose')}
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            {selected.length > 0 && (
+              <button
+                type="button"
+                onClick={() => void onCopyLink()}
+                className="rounded-xl px-3 py-2 text-sm text-slate-600 dark:text-surf-200 hover:bg-slate-200/50 dark:hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-surf-400/50"
+              >
+                {linkCopied ? t('compareCopyLinkDone') : t('compareCopyLink')}
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-xl px-3 py-2 text-sm text-slate-600 dark:text-surf-200 hover:bg-slate-200/50 dark:hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-surf-400/50"
+            >
+              {t('compareClose')}
+            </button>
+          </div>
         </div>
         {selected.length === 0 ? (
           <p className="text-slate-500 dark:text-white/50 text-sm">{t('compareEmpty')}</p>

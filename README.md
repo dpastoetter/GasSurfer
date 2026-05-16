@@ -28,11 +28,14 @@ _Regenerated April 2026 with `npm run screenshot` (dev server running; see [docs
 - **Skeleton loading** — Layout placeholders while gas data loads
 - **Copy fee** — One-click copy of the current chain’s standard fee
 - **Auto-refresh** — Gas ~12s, prices ~1 min. No API keys required for the frontend.
-- **Favorites & compare** — Star chains (pinned order), compare up to three side-by-side with freshness/source hints; **shareable URLs** keep `compare=` (and related query params) in sync via `replaceState` ([URL parameters](#url-parameters-shareable-links))
+- **Favorites & compare** — Star chains (pinned order), compare up to three side-by-side with freshness/source hints; **Copy link** in the compare dialog copies the current URL (including `compare=`); **shareable URLs** keep query params in sync via `replaceState` ([URL parameters](#url-parameters-shareable-links))
 - **Learn & tour** — Learn drawer (gwei / L2 / Bitcoin) and optional first-visit onboarding
 - **Tx estimator** — Rough fee for preset gas limits on the selected EVM chain (+ fiat); optional **`txPreset=`** in the URL opens with matching gas (see [URL parameters](#url-parameters-shareable-links))
 - **Card sparklines** — Tiny recent standard-fee trends on chain cards
-- **Share & recap** — PNG snapshot (share or download) and a local-only weekly recap (IndexedDB samples)
+- **Share & recap** — PNG snapshot (share or download) and a local-only weekly recap (IndexedDB samples); a subtle **nudge dot** on Weekly when this device has enough samples for a meaningful recap (dismissible per week)
+- **Condition toast** — When the **selected** chain’s surf condition changes (e.g. Choppy → Smooth), a short status message appears under the hero (~6s, respects reduced motion; not on first load)
+- **Tide table** — Collapsible **Ethereum-only** calm-hours view from fee samples stored on this device (needs enough recent ticks; see disclaimer in the panel)
+- **Widget / kiosk mode** — `?widget=1` shows a compact layout: surf report, mini trend, theme/locale/currency, refresh, and last updated—ideal for a second screen or embed ([examples](#widget--kiosk-mode))
 - **Trust cues** — Per-chain data age and RPC / mempool source label
 
 **Privacy / data inventory:** [docs/PRIVACY.md](docs/PRIVACY.md) (what leaves the browser: RPCs, mempool.space, CoinGecko, optional API).
@@ -62,8 +65,19 @@ The address bar stays in sync with core UI state (no extra history entries). Use
 | `lang`     | `lang=de` | UI language: `en`, `de`, `es`. |
 | `compare`  | `compare=1,8453` | Up to **three** allowlisted chain IDs for the compare dialog (invalid or unknown IDs are ignored once data loads). |
 | `txPreset` | `txPreset=nft` | Tx estimator preset: `erc20`, `nft`, or `swap` (gas limit); cleared when the user edits the gas field manually. |
+| `widget`   | `widget=1` | Compact kiosk layout: primary surf report + trend only (no EVM grid, fee alerts, tx estimator, or compare toolbar). Header keeps theme, locale, currency, refresh, and last updated. Read on load; other params still sync when you change chain or currency. |
 
-Implementation: [`src/hooks/useUrlSync.ts`](src/hooks/useUrlSync.ts), [`src/lib/urlQuerySchema.ts`](src/lib/urlQuerySchema.ts). Details for contributors: [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md#shareable-url-state).
+**Examples**
+
+- Compare two chains: `/?compare=1,8453&lang=en`
+- Open tx estimator on NFT preset: `/?chain=1&txPreset=nft`
+- Kiosk on Ethereum: `/?widget=1&chain=1&lang=en`
+
+### Widget / kiosk mode
+
+Add `widget=1` (or `widget=true`) for a minimal view—large surf report and recent trend, with stale/offline banners still shown. Combine with `chain`, `currency`, and `lang` as usual. The full app (EVM grid, tide table, alerts, learn/compare) is at the same origin without `widget`.
+
+Implementation: [`src/hooks/useUrlSync.ts`](src/hooks/useUrlSync.ts), [`src/lib/urlQuerySchema.ts`](src/lib/urlQuerySchema.ts). Engagement hooks and panels: [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md#engagement-features-client-only). Details for contributors: [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md#shareable-url-state).
 
 **Optional — fee averages from a backend (SQLite):**
 

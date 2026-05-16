@@ -128,3 +128,9 @@ test('URL txPreset=nft sets tx estimator gas limit', async ({ page }) => {
   await page.getByRole('heading', { name: /EVM chains/i }).waitFor({ state: 'visible', timeout: 90_000 });
   await expect(page.getByLabel(/Gas limit/i)).toHaveValue('200000');
 });
+
+test('URL widget=1 enables compact kiosk layout', async ({ page }) => {
+  await page.goto('/?widget=1&chain=1&lang=en', { waitUntil: 'load', timeout: 60_000 });
+  await expect(page.locator('[data-widget="true"]')).toBeVisible({ timeout: 90_000 });
+  await expect(page.getByRole('heading', { name: /EVM chains/i })).toHaveCount(0);
+});

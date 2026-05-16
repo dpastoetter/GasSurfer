@@ -1,7 +1,7 @@
 import { useEffect, useCallback } from 'react';
 import type { Currency } from '../types';
 import type { TxPresetUrl } from '../lib/urlQuerySchema';
-import { parseCompareQueryParam, parseTxPresetQueryParam } from '../lib/urlQuerySchema';
+import { parseCompareQueryParam, parseTxPresetQueryParam, parseWidgetQueryParam } from '../lib/urlQuerySchema';
 
 const CHAIN_PARAM = 'chain';
 const CURRENCY_PARAM = 'currency';
@@ -17,11 +17,13 @@ export type UrlInitial = {
   compareIds: number[];
   /** Tx estimator preset from `txPreset=erc20|nft|swap`. */
   txPreset: TxPresetUrl | null;
+  /** Compact layout from `widget=1` (read on load; preserved in URL by useUrlSync). */
+  widget: boolean;
 };
 
 export function readUrlParams(): UrlInitial {
   if (typeof window === 'undefined') {
-    return { chainId: null, currency: null, lang: null, compareIds: [], txPreset: null };
+    return { chainId: null, currency: null, lang: null, compareIds: [], txPreset: null, widget: false };
   }
   const p = new URLSearchParams(window.location.search);
   const c = p.get(CHAIN_PARAM);
@@ -31,12 +33,14 @@ export function readUrlParams(): UrlInitial {
   const lang = p.get(LANG_PARAM);
   const compareIds = parseCompareQueryParam(p.get(COMPARE_PARAM));
   const txPreset = parseTxPresetQueryParam(p.get(TX_PRESET_PARAM));
+  const widget = parseWidgetQueryParam(p.get('widget'));
   return {
     chainId: Number.isFinite(chainId) ? chainId : null,
     currency: validCur,
     lang: lang === 'de' || lang === 'en' || lang === 'es' ? lang : null,
     compareIds,
     txPreset,
+    widget,
   };
 }
 

@@ -110,12 +110,22 @@ The app mirrors selected chain, currency, locale, compare selection, and tx-esti
 | `lang` | `en` \| `de` \| `es`. |
 | `compare` | Comma-separated list, **max three** unique IDs. Only IDs in [`URL_QUERY_CHAIN_IDS`](../src/lib/urlQuerySchema.ts) (Bitcoin `0` + configured EVM chains) are kept; order preserved. |
 | `txPreset` | `erc20` \| `nft` \| `swap` — matches Tx estimator preset gas limits in [`TX_PRESET_GAS_LIMIT`](../src/lib/urlQuerySchema.ts). |
+| `widget` | `1` or `true` — compact kiosk layout (`data-widget="true"` on the root). Read on load only; existing query keys are preserved when syncing other params. |
 
 **Hydration in [`App.tsx`](../src/App.tsx):** `compareIds` state is seeded from the URL; once `displayChains` is non-empty, the UI and `useUrlSync` use a **`compareIdsForUrl` memo** that filters to known chains (unknown IDs never appear in the synced URL). Compare dialog auto-opens when the initial URL contained at least one valid `compare` id.
 
 **Tx estimator ([`TxEstimatorPanel.tsx`](../src/components/TxEstimatorPanel.tsx)):** When `txPreset` is set, the gas limit follows the preset until the user types in the gas field (that clears `txPreset` from state and the URL). Choosing a preset button sets both limit and URL again.
 
-**Tests:** [`src/lib/urlQuerySchema.test.ts`](../src/lib/urlQuerySchema.test.ts), [`src/hooks/useUrlSync.test.ts`](../src/hooks/useUrlSync.test.ts); Playwright smoke loads `?compare=1,8453` and `?chain=1&txPreset=nft` in [`tests/smoke.spec.ts`](../tests/smoke.spec.ts).
+**Tests:** [`src/lib/urlQuerySchema.test.ts`](../src/lib/urlQuerySchema.test.ts), [`src/hooks/useUrlSync.test.ts`](../src/hooks/useUrlSync.test.ts); Playwright smoke loads `?compare=1,8453`, `?chain=1&txPreset=nft`, and `?widget=1` in [`tests/smoke.spec.ts`](../tests/smoke.spec.ts).
+
+### Engagement features (client-only)
+
+| Feature | Location | Notes |
+|---------|----------|--------|
+| Condition transition toast | [`useConditionTransition.ts`](../src/hooks/useConditionTransition.ts), [`ConditionTransitionToast.tsx`](../src/components/ConditionTransitionToast.tsx) | Fires when the **selected** chain’s surf condition rank changes after the first sample. |
+| Tide table | [`tideTable.ts`](../src/lib/tideTable.ts), [`TideTablePanel.tsx`](../src/components/TideTablePanel.tsx) | Ethereum hourly buckets from IndexedDB fee samples (`TIDE_MIN_SAMPLES` in `tideTable.ts`). |
+| Weekly recap nudge | [`useRecapNudge.ts`](../src/hooks/useRecapNudge.ts) | Dot on **Weekly** when enough local samples exist and the user has not dismissed for the current week. |
+| Compare copy link | [`ComparePanel.tsx`](../src/components/ComparePanel.tsx) | Copies the current URL (including `compare=`). |
 
 ---
 

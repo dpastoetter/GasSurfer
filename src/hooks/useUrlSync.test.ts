@@ -16,6 +16,7 @@ describe('readUrlParams', () => {
       lang: 'es',
       compareIds: [],
       txPreset: null,
+      widget: false,
     });
   });
 
@@ -29,7 +30,15 @@ describe('readUrlParams', () => {
       lang: null,
       compareIds: [],
       txPreset: null,
+      widget: false,
     });
+  });
+
+  it('parses widget=1 for kiosk layout', () => {
+    vi.stubGlobal('window', {
+      location: { search: '?widget=1&chain=1' },
+    });
+    expect(readUrlParams().widget).toBe(true);
   });
 
   it('parses compare= comma chain ids (max 3, allowlisted)', () => {
