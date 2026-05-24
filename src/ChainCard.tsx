@@ -150,6 +150,11 @@ export function ChainCard({
                 {t('bestDealBadge')}
               </span>
             )}
+            {chain.feeUncertain && (
+              <span className="text-[10px] uppercase tracking-widest text-amber-700 dark:text-amber-200 font-semibold bg-amber-500/20 px-2 py-0.5 rounded-full">
+                ?
+              </span>
+            )}
             <span
               className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
                 chain.condition === 'surfs-up'

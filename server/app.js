@@ -130,6 +130,40 @@ async function handleSnapshot(_req, res) {
 app.get('/api/v1/snapshot.json', snapshotRateLimiter, handleSnapshot);
 app.get('/api/snapshot.json', snapshotRateLimiter, handleSnapshot);
 
+app.get('/api/status', snapshotRateLimiter, async (_req, res) => {
+  try {
+    const raw = await getLatestSnapshotJson();
+    if (raw == null) {
+      return res.status(404).json({ error: 'No snapshot yet', chains: [] });
+    }
+    let payload;
+    try {
+      payload = JSON.parse(raw);
+    } catch {
+      return res.status(500).json({ error: 'Invalid snapshot data' });
+    }
+    const chains = Array.isArray(payload.chains)
+      ? payload.chains.map((c) => ({
+          chainId: c.chainId,
+          name: c.name,
+          condition: c.condition,
+          standard: c.gas?.standard ?? null,
+          updatedAt: c.updatedAt ?? null,
+          source: c.dataSource ?? null,
+        }))
+      : [];
+    res.setHeader('Cache-Control', 'public, max-age=5');
+    return res.json({
+      generatedAt: payload.generatedAt ?? null,
+      stale: Boolean(payload.stale),
+      chains,
+    });
+  } catch (err) {
+    console.error('GET /api/status', err);
+    return res.status(500).json({ error: 'Failed to read status' });
+  }
+});
+
 app.get(
   '/api/ticks/recent',
   ticksRecentRateLimiter,

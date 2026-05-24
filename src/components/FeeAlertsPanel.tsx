@@ -3,6 +3,13 @@ import type { ChainGas, SurfCondition } from '../types';
 import { formatGwei, feeUnitLabel } from '../types';
 import { useI18n } from '../i18n/I18nContext';
 import { conditionLabels } from '../i18n/messages';
+import {
+  loadWebhookRegime,
+  loadWebhookUrl,
+  saveWebhookRegime,
+  saveWebhookUrl,
+  type WebhookRegimePrefs,
+} from '../lib/webhookAlerts';
 
 const STORAGE_PREFIX = 'gas-surfer-alert-below-';
 const LAST_NOTIFY_PREFIX = 'gas-surfer-alert-last-';
@@ -73,6 +80,8 @@ function FeeAlertsPanelInner({ chain }: { chain: ChainGas }) {
   const labels = conditionLabels(locale);
   const [threshold, setThreshold] = useState(() => loadThreshold(chain.chainId));
   const [regime, setRegime] = useState(() => loadRegime(chain.chainId));
+  const [webhookUrl, setWebhookUrl] = useState(() => loadWebhookUrl(chain.chainId));
+  const [webhookRegime, setWebhookRegime] = useState<WebhookRegimePrefs>(() => loadWebhookRegime(chain.chainId));
   const [perm, setPerm] = useState<NotificationPermission | 'unsupported'>(initialNotificationPermission);
   const prevConditionRef = useRef<SurfCondition | null>(null);
 
@@ -168,6 +177,16 @@ function FeeAlertsPanelInner({ chain }: { chain: ChainGas }) {
     saveRegime(chain.chainId, next);
   };
 
+  const saveWebhook = () => {
+    saveWebhookUrl(chain.chainId, webhookUrl);
+  };
+
+  const toggleWebhookRegime = (key: keyof WebhookRegimePrefs) => {
+    const next = { ...webhookRegime, [key]: !webhookRegime[key] };
+    setWebhookRegime(next);
+    saveWebhookRegime(chain.chainId, next);
+  };
+
   return (
     <div className="rounded-2xl glass border border-slate-200/50 dark:border-white/10 p-4 mb-6 text-sm">
       <h2 className="font-display text-lg tracking-wide text-slate-800 dark:text-white mb-2">{t('alertsTitle')}</h2>
@@ -235,6 +254,46 @@ function FeeAlertsPanelInner({ chain }: { chain: ChainGas }) {
           {t('alertsClear')}
         </button>
       </div>
+      <fieldset className="mt-4 pt-4 border-t border-slate-200/40 dark:border-white/10 space-y-2">
+        <legend className="text-xs font-medium text-slate-600 dark:text-surf-300 px-1">{t('webhookTitle')}</legend>
+        <p className="text-xs text-slate-500 dark:text-white/45">{t('webhookHint')}</p>
+        <label className="flex flex-col gap-1 w-full">
+          <span className="text-slate-600 dark:text-surf-300 text-xs">{t('webhookUrl')}</span>
+          <input
+            type="url"
+            value={webhookUrl}
+            onChange={(e) => setWebhookUrl(e.target.value)}
+            placeholder="https://ntfy.sh/..."
+            className="w-full rounded-lg border border-slate-300/50 dark:border-white/20 bg-white/80 dark:bg-surf-900/40 px-2 py-1.5 text-slate-800 dark:text-white text-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-surf-400/50"
+          />
+        </label>
+        <button
+          type="button"
+          onClick={saveWebhook}
+          className="rounded-xl glass border border-slate-300/50 dark:border-white/20 px-3 py-2 text-slate-700 dark:text-surf-200 text-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-surf-400/50"
+        >
+          {t('webhookSave')}
+        </button>
+        <p className="text-xs font-medium text-slate-600 dark:text-surf-300 pt-1">{t('webhookRegimeLegend')}</p>
+        <label className="flex items-center gap-2 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={webhookRegime.improve}
+            onChange={() => toggleWebhookRegime('improve')}
+            className="rounded border-slate-400 text-surf-600 focus:ring-surf-400/50"
+          />
+          <span className="text-slate-700 dark:text-surf-200 text-xs">{t('alertsRegimeImprove')}</span>
+        </label>
+        <label className="flex items-center gap-2 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={webhookRegime.worsen}
+            onChange={() => toggleWebhookRegime('worsen')}
+            className="rounded border-slate-400 text-surf-600 focus:ring-surf-400/50"
+          />
+          <span className="text-slate-700 dark:text-surf-200 text-xs">{t('alertsRegimeWorsen')}</span>
+        </label>
+      </fieldset>
     </div>
   );
 }

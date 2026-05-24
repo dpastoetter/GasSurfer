@@ -62,9 +62,21 @@ export function LearnDrawer({ open, onClose }: LearnDrawerProps) {
           <h3 className="text-sm font-semibold text-slate-800 dark:text-white mb-1">{t('learnBtcTiersTitle')}</h3>
           <p className="text-sm text-slate-600 dark:text-surf-300/90 leading-relaxed">{t('learnBtcTiersBody')}</p>
         </section>
-        <section>
+        <section className="mb-5">
           <h3 className="text-sm font-semibold text-slate-800 dark:text-white mb-1">{t('learnBridgeTitle')}</h3>
           <p className="text-sm text-slate-600 dark:text-surf-300/90 leading-relaxed">{t('learnBridgeBody')}</p>
+        </section>
+        <section className="mb-5">
+          <h3 className="text-sm font-semibold text-slate-800 dark:text-white mb-1">{t('learnMethodologyTitle')}</h3>
+          <p className="text-sm text-slate-600 dark:text-surf-300/90 leading-relaxed">{t('learnMethodologyBody')}</p>
+        </section>
+        <section className="mb-5">
+          <h3 className="text-sm font-semibold text-slate-800 dark:text-white mb-1">{t('learnMethodologyEipTitle')}</h3>
+          <p className="text-sm text-slate-600 dark:text-surf-300/90 leading-relaxed">{t('learnMethodologyEipBody')}</p>
+        </section>
+        <section>
+          <h3 className="text-sm font-semibold text-slate-800 dark:text-white mb-1">{t('learnMethodologyRpcTitle')}</h3>
+          <p className="text-sm text-slate-600 dark:text-surf-300/90 leading-relaxed">{t('learnMethodologyRpcBody')}</p>
         </section>
       </div>
     </div>

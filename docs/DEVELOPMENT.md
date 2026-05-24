@@ -126,6 +126,24 @@ The app mirrors selected chain, currency, locale, compare selection, and tx-esti
 | Tide table | [`tideTable.ts`](../src/lib/tideTable.ts), [`TideTablePanel.tsx`](../src/components/TideTablePanel.tsx) | Ethereum hourly buckets from IndexedDB fee samples (`TIDE_MIN_SAMPLES` in `tideTable.ts`). |
 | Weekly recap nudge | [`useRecapNudge.ts`](../src/hooks/useRecapNudge.ts) | Dot on **Weekly** when enough local samples exist and the user has not dismissed for the current week. |
 | Compare copy link | [`ComparePanel.tsx`](../src/components/ComparePanel.tsx) | Copies the current URL (including `compare=`). |
+| Cheaper-chain callout | [`CheapestChainCallout.tsx`](../src/components/CheapestChainCallout.tsx) | Fiat compare for standard tx; week dismiss via [`cheapestCalloutDismiss.ts`](../src/lib/cheapestCalloutDismiss.ts). |
+| Recap share image | [`recapSnapshotCanvas.ts`](../src/lib/recapSnapshotCanvas.ts), [`WeeklyRecapModal.tsx`](../src/components/WeeklyRecapModal.tsx) | Canvas PNG; Web Share API with download fallback. |
+| Install prompt | [`InstallPrompt.tsx`](../src/components/InstallPrompt.tsx) | `beforeinstallprompt`; hidden in widget mode; dismiss persisted in `localStorage`. |
+
+PWA assets: [`public/manifest.webmanifest`](../public/manifest.webmanifest), [`public/icons/`](../public/icons/). Playwright checks manifest link in [`tests/smoke.spec.ts`](../tests/smoke.spec.ts).
+
+### Field-leading features
+
+| Feature | Location |
+|---------|----------|
+| Send window score | [`sendWindowScore.ts`](../src/lib/sendWindowScore.ts), [`SendWindowScore.tsx`](../src/components/SendWindowScore.tsx) |
+| Best chain for action | [`actionCostRank.ts`](../src/lib/actionCostRank.ts), [`BestChainForActionPanel.tsx`](../src/components/BestChainForActionPanel.tsx) |
+| RPC divergence | [`rpcDivergence.ts`](../src/lib/rpcDivergence.ts), [`useGasPrices.ts`](../src/useGasPrices.ts) `feeUncertain` |
+| Webhook alerts | [`webhookAlerts.ts`](../src/lib/webhookAlerts.ts), [`useWebhookAlerts.ts`](../src/hooks/useWebhookAlerts.ts) |
+| Embed / badge routes | [`EmbedApp.tsx`](../src/EmbedApp.tsx), [`BadgeApp.tsx`](../src/BadgeApp.tsx), [`main.tsx`](../src/main.tsx) |
+| Status API | `GET /api/status` in [`server/app.js`](../server/app.js) |
+
+See [INTEGRATIONS.md](INTEGRATIONS.md) for embed snippets and badge URLs.
 
 ---
 
@@ -162,9 +180,9 @@ npm run preview # serve dist/
 2. Start the dev server (e.g. `npm run dev`); if Vite uses another port, set `BASE_URL` when running the script. If Playwright reports `ECONNREFUSED` while Vite is up, bind explicitly (e.g. `npx vite --host 127.0.0.1 --strictPort`) and run `BASE_URL=http://127.0.0.1:5173 npm run screenshot`.
 3. In another terminal run: `npm run screenshot` (or `BASE_URL=http://localhost:5174 npm run screenshot` if the app is on 5174).
 
-This saves `docs/screenshots/hero.png`, `full.png`, and `mobile.png` (used in the README). Optional: `SCREENSHOT_WAIT=8000` (or higher) to wait longer for live RPC data before capturing.
+This saves `docs/screenshots/hero.png`, `full.png`, and `mobile.png` (used in the README). The script uses the same RPC/price mocks as `tests/smoke.spec.ts` so captures are reproducible without live network health. Optional: `SCREENSHOT_WAIT=8000` (default 8000 ms) to pause after the dashboard loads before capture.
 
-The script skips onboarding via `localStorage` so captures show the main dashboard. **Commit** updated PNGs when you refresh marketing screenshots.
+The script skips onboarding, install prompt, and weekly cheapest callout via `localStorage` so captures show the main dashboard. **Commit** updated PNGs when you refresh marketing screenshots.
 
 ---
 

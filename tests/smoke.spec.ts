@@ -134,3 +134,23 @@ test('URL widget=1 enables compact kiosk layout', async ({ page }) => {
   await expect(page.locator('[data-widget="true"]')).toBeVisible({ timeout: 90_000 });
   await expect(page.getByRole('heading', { name: /EVM chains/i })).toHaveCount(0);
 });
+
+test('embed route loads with data-embed', async ({ page }) => {
+  await page.goto('/embed?chain=1&lang=en', { waitUntil: 'load', timeout: 60_000 });
+  await expect(page.locator('[data-embed="true"]')).toBeVisible({ timeout: 90_000 });
+});
+
+test('badge route renders', async ({ page }) => {
+  await page.goto('/badge/1', { waitUntil: 'load', timeout: 60_000 });
+  await expect(page.locator('body')).toContainText(/Ethereum|Loading/i, { timeout: 90_000 });
+});
+
+test('PWA manifest is linked and reachable', async ({ page }) => {
+  await page.goto('/', { waitUntil: 'load', timeout: 60_000 });
+  const href = await page.locator('link[rel="manifest"]').getAttribute('href');
+  expect(href).toBeTruthy();
+  const res = await page.request.get(href!);
+  expect(res.ok()).toBe(true);
+  const json = (await res.json()) as { icons?: { src: string }[] };
+  expect(json.icons?.length).toBeGreaterThan(0);
+});

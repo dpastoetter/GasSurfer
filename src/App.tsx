@@ -20,12 +20,18 @@ import { ShareSnapshotButton } from './components/ShareSnapshotButton';
 import { ChainDetailDrawer } from './components/ChainDetailDrawer';
 import { RefreshIntervalControl } from './components/RefreshIntervalControl';
 import { SurfBandsPanel } from './components/SurfBandsPanel';
+import { CheapestChainCallout } from './components/CheapestChainCallout';
 import { ConditionTransitionToast } from './components/ConditionTransitionToast';
+import { InstallPrompt } from './components/InstallPrompt';
+import { SendWindowScore } from './components/SendWindowScore';
+import { BestChainForActionPanel } from './components/BestChainForActionPanel';
+import { EmbedSnippetButton } from './components/EmbedSnippetButton';
+import { useWebhookAlerts } from './hooks/useWebhookAlerts';
+import type { TxPresetUrl } from './lib/urlQuerySchema';
 import { TideTablePanel } from './components/TideTablePanel';
 import { useUrlSync, readUrlParams } from './hooks/useUrlSync';
 import { useConditionTransition } from './hooks/useConditionTransition';
 import { useRecapNudge, dismissRecapNudgeForWeek } from './hooks/useRecapNudge';
-import type { TxPresetUrl } from './lib/urlQuerySchema';
 import { useFavorites } from './hooks/useFavorites';
 import { useMultiChainSparkHistory } from './hooks/useMultiChainSparkHistory';
 import { useOnboarding } from './hooks/useOnboarding';
@@ -109,6 +115,14 @@ function App() {
   const widgetMode = urlSnap.widget;
   const recapNudge = useRecapNudge();
 
+  type ActionIntent = TxPresetUrl | 'transfer';
+  const actionIntent: ActionIntent = txPresetUrl ?? 'transfer';
+
+  const onActionIntentChange = useCallback((intent: ActionIntent) => {
+    if (intent === 'transfer') setTxPresetUrl(null);
+    else setTxPresetUrl(intent);
+  }, []);
+
   const onCopyJsonSnapshot = useCallback(async () => {
     if (displayChains.length === 0) return;
     try {
@@ -139,6 +153,7 @@ function App() {
   }, [theme]);
 
   const primary = displayChains.find((c) => c.chainId === effectiveChainId) ?? displayChains[0];
+  useWebhookAlerts(primary);
   const { values: chartValues, hasServerBlend } = useMergedChartHistory(primary, CHART_HISTORY_SIZE);
   const delightBurst = useDelightSurfsUp(primary, primary ? isFavorite(primary.chainId) : false);
   const { toast: conditionToast, dismiss: dismissConditionToast } = useConditionTransition(primary);
@@ -229,14 +244,25 @@ function App() {
       )}
       {!widgetMode && <FeeAlertsPanel chain={primary} />}
       {!widgetMode && (
-        <TxEstimatorPanel
-          chain={primary}
-          coinGeckoId={getCoinGeckoId(primary?.chainId ?? 1)}
-          prices={prices}
-          currency={currency}
-          urlTxPreset={txPresetUrl}
-          onUrlTxPresetChange={setTxPresetUrl}
-        />
+        <>
+          <TxEstimatorPanel
+            chain={primary}
+            coinGeckoId={getCoinGeckoId(primary?.chainId ?? 1)}
+            prices={prices}
+            currency={currency}
+            urlTxPreset={txPresetUrl}
+            onUrlTxPresetChange={setTxPresetUrl}
+          />
+          <BestChainForActionPanel
+            chains={displayChains}
+            selectedChainId={effectiveChainId}
+            currency={currency}
+            prices={prices}
+            intent={actionIntent}
+            onIntentChange={onActionIntentChange}
+            onSelectChain={setSelectedChainId}
+          />
+        </>
       )}
       <section className="mb-12 md:mb-16">
         <div className="glass-strong rounded-3xl p-8 md:p-12 border border-slate-200/50 dark:border-white/10 shadow-2xl">
@@ -254,10 +280,26 @@ function App() {
               bitcoinExtras={primary.bitcoinExtras}
               wrapperClassName={delightBurst ? 'surfs-up-burst' : ''}
               onOpenLearnStandard={() => setLearnOpen(true)}
+              feeUncertain={primary.feeUncertain}
+            />
+          )}
+          {primary && (
+            <SendWindowScore
+              chain={primary}
+              feeAverages={feeAverages[primary.chainId]}
+              hasCheaperChain={cheapestChain != null && cheapestChain.chainId !== primary.chainId}
             />
           )}
         </div>
       </section>
+      <CheapestChainCallout
+        primary={primary}
+        cheapestChain={cheapestChain}
+        chainCount={displayChains.length}
+        currency={currency}
+        prices={prices}
+        onSwitchChain={setSelectedChainId}
+      />
       {primary && chartValues.length >= 2 && (
         <section className="mb-10" aria-labelledby="trend-heading">
           <h2 id="trend-heading" className="font-display text-2xl tracking-wider text-surf-700 dark:text-surf-200 mb-4">
@@ -440,6 +482,9 @@ function App() {
                 {!loading && displayChains.length > 0 && (
                   <ShareSnapshotButton chain={primary} coinGeckoId={getCoinGeckoId(primary?.chainId ?? 1)} prices={prices} currency={currency} />
                 )}
+                {!loading && primary && (
+                  <EmbedSnippetButton chainId={primary.chainId} />
+                )}
                 <button
                   type="button"
                   onClick={() => void onCopyJsonSnapshot()}
@@ -485,6 +530,7 @@ function App() {
             <p className="text-xs mt-1 opacity-90">{t('offlineCachedNote')}</p>
           </div>
         )}
+        {!widgetMode && <InstallPrompt />}
         {stale && online && displayChains.length > 0 && (
           <div
             className="mb-4 rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-2 text-center text-sm text-amber-900 dark:text-amber-100/90"

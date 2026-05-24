@@ -3,6 +3,7 @@ import type { SurfCondition, Currency, Eip1559Fees, BitcoinMempoolExtras } from 
 import { formatGwei, gasCostInToken, formatFiat, feeUnitLabel, costLabel } from './types';
 import { getPriceInCurrency } from './useTokenPrices';
 import { FeeAveragesDisplay } from './FeeAveragesDisplay';
+import { FeeUncertaintyBanner } from './components/FeeUncertaintyBanner';
 import type { FeeAverages } from './feeHistory';
 import { useI18n } from './i18n/I18nContext';
 import { conditionLabels } from './i18n/messages';
@@ -22,6 +23,7 @@ interface SurfReportProps {
   wrapperClassName?: string;
   /** Opens Learn drawer (e.g. to Standard glossary). */
   onOpenLearnStandard?: () => void;
+  feeUncertain?: boolean;
 }
 
 export function SurfReport({
@@ -37,6 +39,7 @@ export function SurfReport({
   bitcoinExtras,
   wrapperClassName = '',
   onOpenLearnStandard,
+  feeUncertain = false,
 }: SurfReportProps) {
   const [copied, setCopied] = useState(false);
   const { t, ti, locale } = useI18n();
@@ -70,6 +73,7 @@ export function SurfReport({
         {label}
       </h2>
       <p className="text-surf-600 dark:text-surf-200 text-lg md:text-xl mb-1">{sub}</p>
+      {feeUncertain && <FeeUncertaintyBanner />}
       <p className="text-surf-600 dark:text-surf-400/90 text-sm flex flex-wrap items-center justify-center gap-2">
         <span>
           {chainName} · <span className="text-surf-700 dark:text-foam font-semibold">{formatGwei(gwei)} {feeUnitLabel(chainId)}</span>

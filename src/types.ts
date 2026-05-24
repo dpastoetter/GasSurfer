@@ -53,6 +53,8 @@ export interface ChainGas {
   fetchMeta?: RpcFetchMeta;
   eip1559?: Eip1559Fees;
   bitcoinExtras?: BitcoinMempoolExtras;
+  /** EVM: two RPC fallbacks disagreed beyond tolerance. */
+  feeUncertain?: boolean;
 }
 
 /** Format gwei/sat per vB for display; uses more decimals for very small L2 values */

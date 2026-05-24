@@ -8,6 +8,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **Field-leading pack:** Send Window Score + calendar reminder; Best chain for action ranking; Learn methodology + RPC divergence flag; webhook alerts; `/embed` and `/badge/{chainId}` routes; `GET /api/status` on optional API; [docs/INTEGRATIONS.md](docs/INTEGRATIONS.md).
+- **Balanced usefulness v2:** actionable **cheaper-chain callout** (switch chain or dismiss for the week); weekly recap **PNG share/download**; PWA **icons**, install prompt, and manifest **Kiosk** shortcut (`/?widget=1&chain=1`).
 - **Balanced engagement pack:** `?widget=1` kiosk layout; compare dialog **Copy link**; condition-transition toast on the selected chain; Ethereum **tide table** from local fee samples; weekly recap nudge dot when recap data is ready (all client-only).
 - **Shareable URLs:** `compare=` (up to three allowlisted chain IDs) and `txPreset=` (`erc20` \| `nft` \| `swap`) in the query string; hydration on load; `history.replaceState` sync from [`useUrlSync`](src/hooks/useUrlSync.ts). Parsers and allowlist in [`urlQuerySchema`](src/lib/urlQuerySchema.ts). Playwright smoke coverage for compare dialog and estimator gas limit.
 - Documentation: README **URL parameters** table; [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) **Shareable URL state**; CONTRIBUTING screenshot troubleshooting; refreshed [docs/screenshots/](docs/screenshots/) (hero / full / mobile).

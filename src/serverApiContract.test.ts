@@ -38,6 +38,13 @@ describe('optional Gas Surfer API (Express)', () => {
     expect(json.error).toBeTruthy();
   });
 
+  it('GET /api/status returns 404 without snapshot', async () => {
+    const res = await fetch(`http://127.0.0.1:${port}/api/status`);
+    expect(res.status).toBe(404);
+    const json = (await res.json()) as { chains?: unknown[] };
+    expect(Array.isArray(json.chains)).toBe(true);
+  });
+
   it('GET /api/ticks/recent returns ticks array', async () => {
     const res = await fetch(`http://127.0.0.1:${port}/api/ticks/recent?limit=2`);
     expect(res.status).toBe(200);

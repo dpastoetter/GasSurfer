@@ -5,6 +5,7 @@ import { EVM_CHAINS, MEMPOOL_API } from './config/chains';
 import { rpcHostname } from './lib/rpcHostname';
 import { loadSurfBandOverrides, type SurfBandOverride } from './lib/surfBandsStorage';
 import { getSurfCondition } from './lib/surfCondition';
+import { feesAreDivergent } from './lib/rpcDivergence';
 
 const EVM_BATCH_SIZE = 4;
 const EVM_BATCH_DELAY_MS = 100;
@@ -108,6 +109,33 @@ async function fetchGasFromRpc(rpcUrl: string): Promise<{ gwei: number; latencyM
   }
 }
 
+async function fetchStandardOnly(rpcUrl: string, chainId: number): Promise<number | null> {
+  if (EIP1559_CHAIN_IDS.has(chainId)) {
+    const e1559 = await fetchEip1559Fees(rpcUrl);
+    if (e1559 != null && e1559.effectiveGwei > 0 && e1559.effectiveGwei < 1e6) return e1559.effectiveGwei;
+    return null;
+  }
+  const gasRes = await fetchGasFromRpc(rpcUrl);
+  if (gasRes != null && gasRes.gwei > 0 && gasRes.gwei < 1e6) return gasRes.gwei;
+  return null;
+}
+
+async function markRpcDivergence(
+  result: ChainGas,
+  chain: (typeof EVM_CHAINS)[number],
+  usedIndex: number,
+  standard: number
+): Promise<ChainGas> {
+  if (chain.rpcUrls.length <= usedIndex + 1) return result;
+  for (let j = usedIndex + 1; j < chain.rpcUrls.length && j < usedIndex + 2; j++) {
+    const alt = await fetchStandardOnly(chain.rpcUrls[j]!, chain.chainId);
+    if (alt != null && feesAreDivergent(standard, alt)) {
+      return { ...result, feeUncertain: true };
+    }
+  }
+  return result;
+}
+
 async function fetchChainGas(
   chain: (typeof EVM_CHAINS)[number],
   bandByChain: Record<number, SurfBandOverride>
@@ -126,24 +154,29 @@ async function fetchChainGas(
           standard: roundTier(g),
           fast: roundTier(g * 1.1),
         };
-        return {
-          chainId: chain.chainId,
-          name: chain.name,
-          symbol: chain.symbol,
-          gas,
-          condition: getSurfCondition(gas.standard, chain.chainId, custom),
-          updatedAt: Date.now(),
-          dataSource: host,
-          fetchMeta: {
-            rpcAttempts: i + 1,
-            rpcUsedHost: host,
-            rpcLatencyMs: e1559.rpcLatencyMs,
+        return markRpcDivergence(
+          {
+            chainId: chain.chainId,
+            name: chain.name,
+            symbol: chain.symbol,
+            gas,
+            condition: getSurfCondition(gas.standard, chain.chainId, custom),
+            updatedAt: Date.now(),
+            dataSource: host,
+            fetchMeta: {
+              rpcAttempts: i + 1,
+              rpcUsedHost: host,
+              rpcLatencyMs: e1559.rpcLatencyMs,
+            },
+            eip1559: {
+              baseFeeGwei: e1559.baseFeeGwei,
+              priorityFeeGwei: e1559.priorityFeeGwei,
+            },
           },
-          eip1559: {
-            baseFeeGwei: e1559.baseFeeGwei,
-            priorityFeeGwei: e1559.priorityFeeGwei,
-          },
-        };
+          chain,
+          i,
+          gas.standard
+        );
       }
     }
 
@@ -155,16 +188,21 @@ async function fetchChainGas(
         standard: roundTier(gwei),
         fast: roundTier(gwei * 1.1),
       };
-      return {
-        chainId: chain.chainId,
-        name: chain.name,
-        symbol: chain.symbol,
-        gas,
-        condition: getSurfCondition(gas.standard, chain.chainId, custom),
-        updatedAt: Date.now(),
-        dataSource: host,
-        fetchMeta: { rpcAttempts: i + 1, rpcUsedHost: host, rpcLatencyMs: latencyMs },
-      };
+      return markRpcDivergence(
+        {
+          chainId: chain.chainId,
+          name: chain.name,
+          symbol: chain.symbol,
+          gas,
+          condition: getSurfCondition(gas.standard, chain.chainId, custom),
+          updatedAt: Date.now(),
+          dataSource: host,
+          fetchMeta: { rpcAttempts: i + 1, rpcUsedHost: host, rpcLatencyMs: latencyMs },
+        },
+        chain,
+        i,
+        gas.standard
+      );
     }
   }
   return null;
