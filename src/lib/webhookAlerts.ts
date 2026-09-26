@@ -53,7 +53,11 @@ export function saveWebhookRegime(chainId: number, prefs: WebhookRegimePrefs): v
 function isValidWebhookUrl(url: string): boolean {
   try {
     const u = new URL(url);
-    return u.protocol === 'https:' || u.protocol === 'http:';
+    if (u.protocol !== 'https:' && u.protocol !== 'http:') return false;
+    // Reject credentials in URL and non-network schemes disguised as hosts.
+    if (u.username || u.password) return false;
+    if (!u.hostname || u.hostname === '.' || u.hostname.includes('\\')) return false;
+    return true;
   } catch {
     return false;
   }

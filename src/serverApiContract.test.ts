@@ -1,12 +1,18 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
+import { unlinkSync, existsSync } from 'node:fs';
 
 describe('optional Gas Surfer API (Express)', () => {
   let server: ReturnType<typeof createServer>;
   let port: number;
+  let dbPath: string;
 
   beforeAll(async () => {
+    dbPath = join(tmpdir(), `gas-surfer-contract-${process.pid}-${Date.now()}.db`);
+    process.env.GAS_SURFER_DB = dbPath;
     const mod = await import('../server/app.js');
     server = createServer(mod.default);
     await new Promise<void>((resolve, reject) => {
@@ -21,6 +27,11 @@ describe('optional Gas Surfer API (Express)', () => {
     await new Promise<void>((resolve, reject) => {
       server.close((err?: Error) => (err ? reject(err) : resolve()));
     });
+    try {
+      if (existsSync(dbPath)) unlinkSync(dbPath);
+    } catch {
+      /* ignore */
+    }
   });
 
   it('GET /api/health returns JSON ok', async () => {

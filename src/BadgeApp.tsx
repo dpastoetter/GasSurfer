@@ -24,16 +24,19 @@ export default function BadgeApp({ chainId }: BadgeAppProps) {
     const label = chain ? conditionLabels('en')[chain.condition].label : '…';
     const color = chain ? CONDITION_COLOR[chain.condition] : '#64748b';
     const name = chain?.name ?? `Chain ${chainId}`;
+    const safeName = escapeXml(name);
+    const safeLabel = escapeXml(label);
+    const safeColor = /^#[0-9a-fA-F]{3,8}$/.test(color) ? color : '#64748b';
     const svg = `<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="320" height="40" role="img" aria-label="Gas Surfer ${name}: ${label}">
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="40" role="img" aria-label="Gas Surfer ${safeName}: ${safeLabel}">
   <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
     <stop offset="0%" stop-color="#011118"/>
     <stop offset="100%" stop-color="#0a3d4a"/>
   </linearGradient>
   <rect width="320" height="40" rx="8" fill="url(#g)"/>
-  <circle cx="20" cy="20" r="8" fill="${color}"/>
+  <circle cx="20" cy="20" r="8" fill="${safeColor}"/>
   <text x="36" y="17" fill="#e0f7fa" font-family="system-ui,sans-serif" font-size="11" font-weight="600">GAS SURFER</text>
-  <text x="36" y="32" fill="#b2ebf2" font-family="system-ui,sans-serif" font-size="12">${escapeXml(name)} · ${escapeXml(label)}</text>
+  <text x="36" y="32" fill="#b2ebf2" font-family="system-ui,sans-serif" font-size="12">${safeName} · ${safeLabel}</text>
 </svg>`;
     document.title = `${name} — ${label}`;
     document.body.innerHTML = svg;
@@ -48,5 +51,10 @@ export default function BadgeApp({ chainId }: BadgeAppProps) {
 }
 
 function escapeXml(s: string): string {
-  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
 }
